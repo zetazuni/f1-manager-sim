@@ -6,7 +6,7 @@ A realistic and fun Formula 1 Management Simulator.
 ## Directory and Environment
 - **Primary Working Directory**: `S:\Zetrace by Zetazuni`
 - **Platform**: Windows 11
-- **GitHub Repository**: [TBD]
+- **GitHub Repository**: [https://github.com/zetazuni/f1-manager-sim](https://github.com/zetazuni/f1-manager-sim)
 
 ## Workflow & Development Log
 - **2026-10-09**: Project initialized. Created `PROJECT_DETAILS.md`.
