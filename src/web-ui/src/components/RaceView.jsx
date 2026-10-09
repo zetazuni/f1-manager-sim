@@ -7,33 +7,56 @@ const RaceView = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Create PlayCanvas Application
+    // 1. Setup Application
     const app = new pc.Application(canvasRef.current, {
-        mouse: new pc.Mouse(canvasRef.current),
-        touch: new pc.TouchDevice(canvasRef.current)
+      mouse: new pc.Mouse(canvasRef.current),
+      touch: new pc.TouchDevice(canvasRef.current),
     });
 
     app.start();
 
-    // Create Camera
+    // 2. Setup Orthographic Camera for Isometric View
     const camera = new pc.Entity();
-    camera.addComponent('camera', { clearColor: new pc.Color(0.1, 0.1, 0.1) });
-    camera.setPosition(0, 5, 10);
+    camera.addComponent('camera', {
+      projection: pc.PROJECTION_ORTHOGRAPHIC,
+      orthoHeight: 5,
+      clearColor: new pc.Color(0.1, 0.1, 0.1),
+    });
+    // Isometric angle: 35.264 degrees elevation, 45 degrees rotation
+    camera.setPosition(10, 10, 10);
     camera.lookAt(0, 0, 0);
     app.root.addChild(camera);
 
-    // Create Light
+    // 3. Lighting
     const light = new pc.Entity();
-    light.addComponent('light');
-    light.rotate(45, 0, 0);
+    light.addComponent('light', { type: 'directional', intensity: 1 });
+    light.setEulerAngles(45, 45, 0);
     app.root.addChild(light);
 
-    // Placeholder: Add Car (Will replace with GLTF later)
-    const box = new pc.Entity();
-    box.addComponent('model', { type: 'box' });
-    app.root.addChild(box);
+    // 4. Load F1 Car Model
+    const container = new pc.Entity();
+    app.addComponent('container', new pc.ContainerHandler(app));
+
+    app.assets.loadFromUrl('/assets/f1_car.glb', 'container', (err, asset) => {
+        if (!err) {
+            const entity = asset.resource.instantiateRenderEntity();
+            entity.setLocalScale(0.01, 0.01, 0.01); // Scale as needed based on model
+            app.root.addChild(entity);
+        } else {
+            console.error('Error loading GLB:', err);
+            // Fallback: Box if model fails
+            const box = new pc.Entity();
+            box.addComponent('model', { type: 'box' });
+            app.root.addChild(box);
+        }
+    });
+
+    // Handle Window Resize
+    const resize = () => app.resizeCanvas();
+    window.addEventListener('resize', resize);
 
     return () => {
+      window.removeEventListener('resize', resize);
       app.destroy();
     };
   }, []);
