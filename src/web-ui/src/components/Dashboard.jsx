@@ -20,7 +20,7 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    let interval: number | undefined;
+    let interval = 0;
     if (gameState.isRacing && gameState.lap < track.totalLaps) {
       interval = window.setInterval(() => {
         setGameState(prev => {
