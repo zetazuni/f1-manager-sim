@@ -9,22 +9,13 @@ A realistic and fun Formula 1 Management Simulator.
 - **GitHub Repository**: [https://github.com/zetazuni/f1-manager-sim](https://github.com/zetazuni/f1-manager-sim)
 
 ## Workflow & Development Log
-- **2026-10-09**: Initialized core simulation engine. Created `src/data/Models.cs` for team/driver/track structures and `src/sim/SimulationEngine.cs` for lap time calculations.
-- **2026-10-09**: Added `RaceManager.cs` to orchestrate multi-driver laps and `Program.cs` as a CLI entry point for the simulation.
+- **2026-10-09**: Project initialized. Created `PROJECT_DETAILS.md`.
+- **2026-10-09**: Initialized core simulation engine. Created `src/data/Models.cs` and `src/sim/SimulationEngine.cs`.
+- **2026-10-09**: Added `RaceManager.cs` and `Program.cs`.
+- **2026-10-09**: Expanded data models with granular stats (`overtaking`, `powerUnit`, `ersEfficiency` etc.), created `src/data/json/game_data.json` for external data, and refined simulation math in `SimulationEngine.cs` to incorporate driver consistency/tire management.
 
 ## Concept Details
 - **Team Management**: Recruitment of drivers and staff.
-- **Car Development**: Engineering upgrades (Aero, Power Unit, Chassis).
-- **Race Strategy**: Tire management, pit stop timing, fuel usage.
-- **Physics Simulation**: Realistic lap time calculation based on track characteristics, car performance, and driver skill.
-
-## Files & Packages
-### Downloaded Packages
-- *No packages downloaded yet.*
-
-### Project Structure
-- `/src`: Source code
-    - `/sim`: Core simulation engine
-    - `/data`: Game data (drivers, tracks, teams)
-    - `/ui`: User interface components
-- `PROJECT_DETAILS.md`: This file.
+- **Car Development**: Engineering upgrades (Aero High/Low Speed, Power Unit, Chassis Weight, ERS Efficiency).
+- **Race Strategy**: Tire management (informed by driver management stat), pit stop timing, fuel usage.
+- **Physics Simulation**: Realistic lap time calculation based on granular stats, tire degradation moderated by driver skill, and consistency-based random variance.

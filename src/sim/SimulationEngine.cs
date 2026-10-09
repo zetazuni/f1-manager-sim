@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using F1Manager.Data;
 
 namespace F1Manager.Sim
@@ -14,13 +13,26 @@ namespace F1Manager.Sim
         {
             float lapTime = track.baseLapTime;
 
-            // Car Performance (Aero/Engine/Chassis average)
-            float carPerformance = (team.car.aero + team.car.engine + team.car.chassis) / 3f;
+            // Granular Car Performance Calculation
+            float carPerformance = (
+                team.car.aeroHighSpeed * 0.2f +
+                team.car.aeroLowSpeed * 0.2f +
+                team.car.powerUnit * 0.3f +
+                team.car.ersEfficiency * 0.1f +
+                team.car.chassisWeight * 0.2f
+            );
+
             float carDelta = (1.0f - carPerformance) * MAX_CAR_DELTA;
             lapTime += carDelta;
 
-            // Driver Skill
-            float driverSkill = (driver.pace * 0.7f + driver.experience * 0.3f) / 100f;
+            // Granular Driver Skill Calculation
+            float driverSkill = (
+                driver.pace * 0.4f +
+                driver.experience * 0.2f +
+                driver.consistency * 0.2f +
+                driver.tireManagement * 0.2f
+            ) / 100f;
+
             float driverDelta = (1.0f - driverSkill) * MAX_DRIVER_DELTA;
             lapTime += driverDelta;
 
@@ -28,32 +40,32 @@ namespace F1Manager.Sim
             lapTime += fuelKg * FUEL_PENALTY_PER_KG;
 
             // Tire Performance
-            float tirePenalty = CalculateTirePenalty(tireCompound, tireWear, track.tireWearFactor);
+            float tirePenalty = CalculateTirePenalty(tireCompound, tireWear, track.tireWearFactor, driver.tireManagement);
             lapTime += tirePenalty;
 
-            // Randomness (Traffic, small mistakes)
+            // Randomness based on consistency
             Random rnd = new Random();
-            float variance = (float)(rnd.NextDouble() * 0.2 - 0.1); // +/- 0.1s
+            float maxVariance = 0.3f * (1.0f - (driver.consistency / 100f));
+            float variance = (float)(rnd.NextDouble() * maxVariance * 2 - maxVariance);
             lapTime += variance;
 
             return lapTime;
         }
 
-        private float CalculateTirePenalty(string compound, float wear, float trackFactor)
+        private float CalculateTirePenalty(string compound, float wear, float trackFactor, int driverTireMgmt)
         {
-            // Simple model: Degradation increases time
-            // Soft: Fast but wears quick
-            // Hard: Slow but lasts long
-            float baseDeg = wear * trackFactor;
+            // Driver management reduces wear impact
+            float effectiveWear = wear * (1.0f - (driverTireMgmt / 200f));
+            float baseDeg = effectiveWear * trackFactor;
 
             switch (compound.ToLower())
             {
                 case "soft":
-                    return (baseDeg * 1.5f) - 0.5f; // Faster initially
+                    return (baseDeg * 1.8f) - 0.7f; // Faster initially, falls off harder
                 case "medium":
-                    return (baseDeg * 1.0f);
+                    return (baseDeg * 1.1f);
                 case "hard":
-                    return (baseDeg * 0.7f) + 0.4f; // Slower initially
+                    return (baseDeg * 0.6f) + 0.5f; // Slower initially, very durable
                 default:
                     return baseDeg;
             }

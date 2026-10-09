@@ -1,0 +1,29 @@
+{
+  "drivers": [
+    {
+      "name": "Max Verstappen",
+      "pace": 98,
+      "consistency": 95,
+      "experience": 90,
+      "adaptability": 96,
+      "salary": 50000000
+    },
+    {
+      "name": "Lewis Hamilton",
+      "pace": 97,
+      "consistency": 98,
+      "experience": 99,
+      "adaptability": 95,
+      "salary": 45000000
+    }
+  ],
+  "tracks": [
+    {
+      "name": "Monaco",
+      "baseLapTime": 72.0,
+      "tireWearFactor": 0.05,
+      "fuelConsumption": 1.2,
+      "totalLaps": 78
+    }
+  ]
+}
