@@ -9,7 +9,8 @@ A realistic and fun Formula 1 Management Simulator.
 - **GitHub Repository**: [https://github.com/zetazuni/f1-manager-sim](https://github.com/zetazuni/f1-manager-sim)
 
 ## Workflow & Development Log
-- **2026-10-09**: Project initialized. Created `PROJECT_DETAILS.md`.
+- **2026-10-09**: Initialized core simulation engine. Created `src/data/Models.cs` for team/driver/track structures and `src/sim/SimulationEngine.cs` for lap time calculations.
+- **2026-10-09**: Added `RaceManager.cs` to orchestrate multi-driver laps and `Program.cs` as a CLI entry point for the simulation.
 
 ## Concept Details
 - **Team Management**: Recruitment of drivers and staff.
