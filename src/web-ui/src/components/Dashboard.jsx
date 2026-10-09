@@ -15,7 +15,7 @@ const Dashboard = () => {
     tireWear: 0,
     ersMode: ERSMode.Neutral,
     fuelMode: FuelMode.Standard,
-    lapTimes: [] as string[],
+    lapTimes: [], // Removed 'as string[]' for JS compatibility
     isRacing: false
   });
 
