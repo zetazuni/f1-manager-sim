@@ -8,5 +8,7 @@
 
 ## Workflow Log
 - **2026-10-09**: Decided on 3D browser-native visualization using PlayCanvas.
-- **2026-10-09**: Workflow established: Download CC0 GLB F1 car model, place in `public/assets/`, load via PlayCanvas `ContainerHandler`.
+- **2026-10-09**: Transitioned from a single car model to a **Modular Environment Pipeline**. 
+- **Goal**: Procedurally generate detailed F1 tracks using reusable GLB modules (grandstands, paddocks, track sections) within PlayCanvas to enable high-detail venues without heavy assets.
+- **Workflow**: Create/Download modular GLB parts → Place in `/public/assets/track/` → Instantiate programmatically in `RaceView.jsx`.
 - **2026-10-09**: Designing orthographic/isometric camera view with Orbit controls.
