@@ -20,46 +20,80 @@ const RaceView = ({ lapProgress }) => {
     camera.addComponent('camera', {
       projection: pc.PROJECTION_ORTHOGRAPHIC,
       orthoHeight: 40,
-      clearColor: new pc.Color(0.05, 0.05, 0.1)
+      clearColor: new pc.Color(0.02, 0.02, 0.05) // Darker background
     });
-    camera.setPosition(50, 60, 50);
+    camera.setPosition(60, 60, 60);
     camera.lookAt(0, 0, 0);
     app.root.addChild(camera);
 
     // 3. Lighting
     const ambient = new pc.Entity();
-    ambient.addComponent('light', { type: 'ambient', intensity: 0.4, color: new pc.Color(0.2, 0.2, 0.3) });
+    ambient.addComponent('light', { type: 'ambient', intensity: 0.3, color: new pc.Color(0.2, 0.2, 0.4) });
     app.root.addChild(ambient);
     const sun = new pc.Entity();
-    sun.addComponent('light', { type: 'directional', intensity: 0.8, color: new pc.Color(1, 0.95, 0.8), shadow: true });
-    sun.setEulerAngles(-30, 45, 0);
+    sun.addComponent('light', { type: 'directional', intensity: 1.2, color: new pc.Color(1, 1, 0.9), shadow: true });
+    sun.setEulerAngles(-45, 45, 0);
     app.root.addChild(sun);
 
-    // 4. Ground & Track
+    // 4. Ground & Track Surface
     const ground = new pc.Entity();
-    ground.addComponent('model', { type: 'plane', material: new pc.StandardMaterial() });
-    ground.setLocalScale(80, 1, 80);
-    ground.setPosition(0, -1, 0);
-    ground.model.material.diffuse = new pc.Color(0.1, 0.5, 0.1);
+    ground.addComponent('model', { type: 'plane' });
+    ground.setLocalScale(200, 1, 200);
+    ground.setPosition(0, -0.1, 0);
+    const groundMat = new pc.StandardMaterial();
+    groundMat.diffuse = new pc.Color(0.05, 0.1, 0.05);
+    ground.model.material = groundMat;
     app.root.addChild(ground);
 
-    // 5. Procedural Environment (Grandstands, Paddock etc)
-    const addBlock = (x, y, z, width, height, depth, color) => {
+    // Add a Grid surface for better "Game" feel
+    const grid = new pc.Entity();
+    grid.addComponent('model', { type: 'plane' });
+    grid.setLocalScale(100, 1, 100);
+    grid.setPosition(0, 0, 0);
+    const gridMat = new pc.StandardMaterial();
+    gridMat.diffuse = new pc.Color(0.1, 0.1, 0.15);
+    gridMat.emissive = new pc.Color(0.1, 0.1, 0.2);
+    gridMat.opacity = 0.5;
+    gridMat.blendType = pc.BLEND_NORMAL;
+    grid.model.material = gridMat;
+    app.root.addChild(grid);
+
+    // 5. Procedural Track Circle
+    const createTrackSegment = (x, z, size) => {
+        const seg = new pc.Entity();
+        seg.addComponent('model', { type: 'box' });
+        seg.setLocalScale(size, 0.1, size);
+        seg.setLocalPosition(x, 0.05, z);
+        const mat = new pc.StandardMaterial();
+        mat.diffuse = new pc.Color(0.2, 0.2, 0.2); // Asphalt
+        seg.model.material = mat;
+        app.root.addChild(seg);
+    };
+
+    // Draw a basic circular track path
+    for(let i=0; i<32; i++) {
+        const angle = (i/32) * Math.PI * 2;
+        createTrackSegment(Math.cos(angle) * 20, Math.sin(angle) * 20, 4);
+    }
+
+    // 6. Environment
+    const addBlock = (x, y, z, w, h, d, color) => {
       const entity = new pc.Entity();
       entity.setLocalPosition(x, y, z);
-      entity.setLocalScale(width, height, depth);
-      const model = entity.addComponent('model');
-      model.type = 'box';
+      entity.setLocalScale(w, h, d);
+      entity.addComponent('model', { type: 'box' });
       const mat = new pc.StandardMaterial();
       mat.diffuse = color;
-      model.material = mat;
+      entity.model.material = mat;
       app.root.addChild(entity);
-      return entity;
     };
-    addBlock(-20, 5, -5, 8, 3, 20, new pc.Color(0.6, 0.6, 0.6));
-    addBlock(30, 2, -20, 20, 2, 10, new pc.Color(0.4, 0.4, 0.4));
 
-    // 6. F1 Car Model
+    // Grandstand
+    addBlock(-35, 3, 0, 10, 6, 40, new pc.Color(0.5, 0.5, 0.5));
+    // Pit Building
+    addBlock(0, 2, -30, 40, 4, 10, new pc.Color(0.7, 0.1, 0.1));
+
+    // 7. F1 Car Model
     const carContainer = new pc.Entity();
     app.root.addChild(carContainer);
     carEntity.current = carContainer;
@@ -72,7 +106,10 @@ const RaceView = ({ lapProgress }) => {
         } else {
             const box = new pc.Entity();
             box.addComponent('model', { type: 'box' });
-            box.setLocalScale(2, 0.5, 4);
+            box.setLocalScale(1.5, 0.5, 3);
+            const mat = new pc.StandardMaterial();
+            mat.diffuse = new pc.Color(1, 0, 0);
+            box.model.material = mat;
             carContainer.addChild(box);
         }
     });
@@ -80,20 +117,18 @@ const RaceView = ({ lapProgress }) => {
     return () => app.destroy();
   }, []);
 
-  // Animate car position based on lapProgress
   useEffect(() => {
     if (carEntity.current) {
-        // Simple track circuit simulation (X, Z movement)
         const radius = 20;
         const angle = lapProgress * Math.PI * 2;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        carEntity.current.setLocalPosition(x, 1, z);
-        carEntity.current.lookAt(x + Math.cos(angle + 0.1) * radius, 1, z + Math.sin(angle + 0.1) * radius);
+        carEntity.current.setLocalPosition(x, 0.5, z);
+        carEntity.current.setEulerAngles(0, -lapProgress * 360 - 90, 0);
     }
   }, [lapProgress]);
 
-  return <canvas ref={canvasRef} className="w-full h-[600px] bg-black rounded-lg" />;
+  return <canvas ref={canvasRef} className="w-full h-[600px] bg-black rounded-lg shadow-inner" />;
 };
 
 export default RaceView;

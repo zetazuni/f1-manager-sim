@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import RaceView from './components/RaceView';
+import RaceSummaryModal from './components/RaceSummaryModal';
 import { mockTeams, mockTracks, mockDrivers } from './data/mockData';
 import SimulationEngine from './services/SimulationEngine';
 import { ERSMode, FuelMode } from './types';
@@ -10,6 +11,7 @@ function App() {
   const [track] = useState(mockTracks[0]);
   const [driver] = useState(mockDrivers[0]);
   const [sim] = useState(new SimulationEngine());
+  const [showSummary, setShowSummary] = useState(false);
 
   const [gameState, setGameState] = useState({
     lap: 0,
@@ -27,29 +29,33 @@ function App() {
     if (gameState.isRacing && gameState.lap < track.totalLaps) {
       interval = window.setInterval(() => {
         setGameState(prev => {
+          const nextLap = prev.lap + 1;
           const lapTime = sim.calculateLapTime(
-            track, team, driver, prev.lap + 1, prev.fuel, "Medium", prev.tireWear, prev.ersMode, prev.fuelMode
+            track, team, driver, nextLap, prev.fuel, "Medium", prev.tireWear, prev.ersMode, prev.fuelMode
           );
 
           const fuelCons = sim.calculateFuelConsumption(track, prev.fuelMode);
+          const isFinished = nextLap >= track.totalLaps;
 
           const minutes = Math.floor(lapTime / 60);
           const seconds = (lapTime % 60).toFixed(3);
           const lapStr = `${minutes}:${seconds.padStart(6, '0')}`;
 
+          if (isFinished) setShowSummary(true);
+
           return {
             ...prev,
-            lap: prev.lap + 1,
+            lap: nextLap,
             fuel: Math.max(0, prev.fuel - fuelCons),
             tireWear: Math.min(1, prev.tireWear + 0.02),
             lapTimes: [...prev.lapTimes, lapStr],
-            isRacing: prev.lap + 1 < track.totalLaps
+            isRacing: !isFinished
           };
         });
       }, 1000);
     }
     return () => window.clearInterval(interval);
-  }, [gameState.isRacing, sim, team, track, driver]);
+  }, [gameState.isRacing, sim, team, track, driver, track.totalLaps]);
 
   // Calculate progress for 3D view (0 to 1)
   const lapProgress = gameState.lap / track.totalLaps;
@@ -73,6 +79,13 @@ function App() {
             <RaceView lapProgress={lapProgress} />
         </div>
       </div>
+
+      <RaceSummaryModal
+        isOpen={showSummary}
+        onClose={() => setShowSummary(false)}
+        finalTimes={gameState.lapTimes}
+        totalBudget={team.budget}
+      />
     </div>
   );
 }
