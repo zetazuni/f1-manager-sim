@@ -6,11 +6,22 @@ import { playClickSound } from '../services/AudioManager';
 
 const Dashboard = ({ team, track, driver, gameState, setGameState }) => {
   const [sim] = useState(new SimulationEngine());
+  const [lastEvent, setLastEvent] = useState(null);
 
   const handleAction = (actionFn) => {
     playClickSound();
     actionFn();
   };
+
+  // Generate race events
+  useEffect(() => {
+    if (gameState.isRacing) {
+      const event = sim.generateRandomEvent(gameState.lap, driver.name, driver.consistency);
+      if (event) {
+        setLastEvent(event);
+      }
+    }
+  }, [gameState.lap, gameState.isRacing, sim, driver]);
 
   const getButtonClass = (isActive, activeColor) =>
     `py-3 px-6 rounded-md font-bold text-sm tracking-widest uppercase transition-all duration-200 ${
@@ -33,6 +44,18 @@ const Dashboard = ({ team, track, driver, gameState, setGameState }) => {
       </div>
 
       <div className="space-y-8">
+        {/* Race Commentary Feed */}
+        <div className="bg-black/40 p-4 rounded-lg border border-slate-700 min-h-[80px]">
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Race Radio</p>
+          {lastEvent ? (
+            <p className={`text-sm ${lastEvent.type === 'danger' ? 'text-red-400' : lastEvent.type === 'success' ? 'text-green-400' : 'text-slate-200'}`}>
+              <span className="font-bold">L{lastEvent.lap}:</span> {lastEvent.message}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500 italic">Standing by...</p>
+          )}
+        </div>
+
         {/* Telemetry */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">

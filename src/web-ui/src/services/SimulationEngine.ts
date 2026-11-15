@@ -1,5 +1,11 @@
 import { Driver, FuelMode, Team, Track, ERSMode } from '../types';
 
+export interface RaceEvent {
+  lap: number;
+  message: string;
+  type: 'info' | 'warning' | 'danger' | 'success';
+}
+
 class SimulationEngine {
   private readonly FUEL_PENALTY_PER_KG = 0.033;
   private readonly MAX_CAR_DELTA = 3.0;
@@ -50,6 +56,31 @@ class SimulationEngine {
     lapTime += variance;
 
     return lapTime;
+  }
+
+  generateRandomEvent(lap: number, driverName: string, consistency: number): RaceEvent | null {
+    const roll = Math.random() * 100;
+
+    // Lower consistency = higher chance of events
+    const eventChance = 5 + (1 - consistency / 100) * 10;
+
+    if (roll > eventChance) return null;
+
+    const events: Partial<RaceEvent>[] = [
+      { message: `${driverName} sets a personal best sector!`, type: 'success' },
+      { message: `Yellow flag in sector 2. ${driverName} holds position.`, type: 'warning' },
+      { message: `${driverName} is complaining about tire vibrations.`, type: 'warning' },
+      { message: `Engine temperature rising for ${driverName}.`, type: 'danger' },
+      { message: `${driverName} makes a clean overtake into turn 1!`, type: 'success' },
+      { message: `Box this lap, ${driverName}. Confirm.`, type: 'info' }
+    ];
+
+    const event = events[Math.floor(Math.random() * events.length)];
+    return {
+      lap,
+      message: event.message!,
+      type: event.type as any
+    };
   }
 
   private getFuelModeImpact(mode: FuelMode): number {
