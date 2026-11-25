@@ -98,8 +98,16 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Races are now fully reproducible from their seed (the engine's lap time variance uses the race RNG), which made two flaky balance checks deterministic; the engineer-vs-no-stop check now averages five seeds.
 - Test: `tools/checks/m9-cameras.json`.
 
+## M10 Practice, team orders and title screen (DONE, 2026-11-26)
+
+- Practice programme per driver on the preview: Setup work (0.18 s a lap), Tyre data (8 % less wear) or Race simulation (5 % less fuel). AI teams pick their own.
+- Team orders during the race: Let them race, Hold positions (teammates do not attack each other), Swap cars (the teammate ahead lifts when the other is within 3 s).
+- Title screen with Continue (year and round shown) and New career; `?notitle=1` skips it for checks.
+- Root README with features, how to run, and the checks.
+- Tests: practice is worth exactly 0.18 s on lap 1, hold gives zero teammate passes, swap flips the order; `tools/checks/m10-title.json`.
+
 ## Ideas for later
 
-- Practice sessions with setup work, team orders between your two drivers, driver morale.
+- Driver morale and team orders consequences.
 - More circuits and a calendar that changes each year.
 - Replays of key moments, a broadcast-style camera.

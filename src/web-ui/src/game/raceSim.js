@@ -78,7 +78,13 @@ export function formatLap(t) {
  * @param {string} o.playerTeamId
  * @param {number} [o.seed]
  */
-export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder = null }) {
+export const PRACTICE = {
+  setup: { key: 'setup', label: 'Setup work', effect: 'About 0.18 s a lap quicker', pace: -0.18, wear: 1, fuel: 1 },
+  tyres: { key: 'tyres', label: 'Tyre data', effect: '8 % less tyre wear', pace: 0, wear: 0.92, fuel: 1 },
+  fuel: { key: 'fuel', label: 'Race simulation', effect: '5 % less fuel used', pace: 0, wear: 1, fuel: 0.95 },
+};
+
+export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder = null, practice = {} }) {
   const rng = makeRng(seed);
   engine.random = rng; // lap time variance from the same seed: a race replays exactly
   const cars = [];
@@ -105,6 +111,7 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
         penalty: 0,
         aiWearLimit: 0,
         teamIndex: teams.indexOf(team),
+        practice: null,
         lapsDone: 0,
         lapStart: 0,
         lapTime: 0,
@@ -136,8 +143,11 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
   }
   cars.sort((a, b) => a.grid - b.grid);
 
-  // AI starting tyres and how hard each AI pushes a set before pitting
+  // AI starting tyres and how hard each AI pushes a set before pitting;
+  // practice programmes (the player's from the preview screen, AI at random)
+  const programmes = Object.keys(PRACTICE);
   cars.forEach((c) => {
+    c.practice = c.isPlayer ? practice[c.id] || null : programmes[Math.floor(rng() * programmes.length)];
     c.aiWearLimit = 0.66 + rng() * 0.16;
     if (!c.isPlayer) {
       const r = rng();
@@ -149,6 +159,8 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
   const weather = makeWeather(track, rng);
   const race = {
     track, engine, rng, cars, weather,
+    teamOrders: {}, // teamId -> 'race' | 'hold'
+    swaps: {}, // teamId -> true when the car ahead should let its teammate by
     sc: null, // { endLap } while the safety car is out
     scCount: 0,
     trackLength: path.total,
@@ -196,7 +208,7 @@ function nextLapTime(race, c) {
   const wetSkill = 1.15 - (c.driver.adaptability ?? 85) / 400;
   return engine.calculateLapTime(
     track, c.team, c.driver, c.lapsDone + 1, c.fuel, 'Medium', 0, effectiveErs(c), c.fuelMode,
-  ) + tyreDelta(c.compound, c.tireWear, w) + w * WET_GRIP_LOSS * wetSkill;
+  ) + tyreDelta(c.compound, c.tireWear, w) + w * WET_GRIP_LOSS * wetSkill + (c.practice ? PRACTICE[c.practice].pace : 0);
 }
 
 /** Simple AI: spend battery on Attack when it is well charged, and plan pit stops. */
@@ -271,11 +283,27 @@ function resolveTraffic(race, starters) {
       .sort((x, y) => x.lapStart - y.lapStart || x.grid - y.grid);
     let idx = sameLap.indexOf(c) - 1;
     c.passing = null;
+    // Team orders (swap): the teammate ahead, if within 3 s, lifts until this car is by
+    if (race.swaps[c.team.id]) {
+      const mate = sameLap.find((o) => o !== c && o.team.id === c.team.id && o.lapStart < c.lapStart && c.lapStart - o.lapStart < 3);
+      if (mate) {
+        delete race.swaps[c.team.id];
+        const myEnd = c.lapStart + c.lapTime;
+        mate.lapTime = Math.max(mate.lapTime, myEnd + DIRTY_AIR_GAP + 0.3 - mate.lapStart);
+        log(race, c.lapsDone + 1, 'info', `Team orders: ${mate.driver.name} lets ${c.driver.name} through.`, [c.id, mate.id]);
+      }
+    }
     while (idx >= 0) {
       const ahead = sameLap[idx];
       const myEnd = c.lapStart + c.lapTime;
       const aheadEnd = ahead.lapStart + ahead.lapTime;
+      const teammate = ahead.team.id === c.team.id;
       if (myEnd >= aheadEnd + DIRTY_AIR_GAP) return; // not catching it this lap
+      // Team orders: hold = no fighting between teammates
+      if (teammate && race.teamOrders[c.team.id] === 'hold') {
+        c.lapTime = aheadEnd + DIRTY_AIR_GAP + 0.2 - c.lapStart;
+        return;
+      }
 
       const skill = (c.driver.overtaking - ahead.driver.defending) / 100;
       const ersBoost = effectiveErs(c) === ERS.Overtake ? 0.25 : effectiveErs(c) === ERS.Attack ? 0.1 : 0;
@@ -332,9 +360,9 @@ function completeLap(race, c, track) {
   c.lapsDone = lapNo;
   c.lastLap = realLap;
   if (lapNo > 1 && (c.bestLap === null || realLap < c.bestLap)) c.bestLap = realLap;
-  c.fuel = Math.max(0, c.fuel - race.engine.calculateFuelConsumption(track, c.fuelMode));
+  c.fuel = Math.max(0, c.fuel - race.engine.calculateFuelConsumption(track, c.fuelMode) * (c.practice ? PRACTICE[c.practice].fuel : 1));
   const usedErs = effectiveErs(c);
-  c.tireWear = Math.min(1, c.tireWear + wearPerLap(c.compound, ctxFor(race, c)));
+  c.tireWear = Math.min(1, c.tireWear + wearPerLap(c.compound, ctxFor(race, c)) * (c.practice ? PRACTICE[c.practice].wear : 1));
   c.tyreAge += 1;
   c.pitThisLap = null;
   const wasCharged = c.battery > 0;
@@ -591,6 +619,8 @@ export function snapshot(race) {
     totalLaps: race.track.totalLaps,
     fastest: race.fastest,
     safetyCar: !!race.sc,
+    teamOrders: { ...race.teamOrders },
+    swapPending: { ...race.swaps },
     wetness: leader ? wetnessAt(race, leader.lapsDone + 1) : 0,
     rainForecast: race.weather.rain && leader && leader.lapsDone < race.weather.rain.start
       ? { from: race.weather.rain.forecastFrom } : null,
@@ -611,13 +641,22 @@ export function snapshot(race) {
         isPlayer: c.isPlayer, gap, lastLap: c.lastLap, bestLap: c.bestLap, lapsDone: c.lapsDone,
         fuel: c.fuel, fuelPerLap: race.engine.calculateFuelConsumption(race.track, c.fuelMode), battery: c.battery, tireWear: c.tireWear, ersMode: c.ersMode, fuelMode: c.fuelMode,
         dnf: c.dnf, finished: c.finished, grid: c.grid + 1,
-        compound: c.compound, tyreAge: c.tyreAge, autoAi: !!c.autoAi, stops: c.stops, pitRequest: c.pitRequest,
+        compound: c.compound, tyreAge: c.tyreAge, autoAi: !!c.autoAi, practice: c.practice, stops: c.stops, pitRequest: c.pitRequest,
         inPit: !!c.pitThisLap && race.time - c.lapStart < c.pitThisLap.loss + c.pitThisLap.stop,
         compoundsUsed: [...new Set(c.compoundsUsed.length ? c.compoundsUsed : [c.compound])], penalty: c.penalty,
         points: race.over && !c.dnf ? POINTS[i] || 0 : 0,
       };
     }),
   };
+}
+
+/** Team orders for a team: 'race' (default), 'hold', or 'swap' (one-off). */
+export function setTeamOrder(race, teamId, order) {
+  if (order === 'swap') {
+    race.swaps[teamId] = true;
+    return;
+  }
+  race.teamOrders[teamId] = order;
 }
 
 /**

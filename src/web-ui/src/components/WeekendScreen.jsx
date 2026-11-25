@@ -2,7 +2,7 @@ import React from 'react';
 import TrackMap from './TrackMap';
 import { ENVIRONMENTS } from '../game/environments';
 import { QUALI_MODE } from '../game/season';
-import { formatLap } from '../game/raceSim';
+import { formatLap, PRACTICE } from '../game/raceSim';
 
 const rating = (value, low, high) => {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
@@ -52,11 +52,11 @@ export const TrackCard = ({ track, round, total }) => {
   );
 };
 
-export const PreviewPanel = ({ track, round, total, players, modes, onMode, onQualify }) => (
+export const PreviewPanel = ({ track, round, total, players, modes, onMode, practice = {}, onPractice = () => {}, onQualify }) => (
   <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
     <TrackCard track={track} round={round} total={total} />
     <div className="panel space-y-4 p-5">
-      <h3 className="panel-title">Qualifying plan</h3>
+      <h3 className="panel-title">Practice and qualifying</h3>
       <p className="text-sm text-muted">
         One flying lap each. <b className="text-slate-200">Push</b> finds about a quarter of a second but risks a deleted lap for track limits,
         which sends the car to the back of the grid.
@@ -64,6 +64,23 @@ export const PreviewPanel = ({ track, round, total, players, modes, onMode, onQu
       {players.map((p) => (
         <div key={p.carId} className="rounded-lg border border-line bg-panel-2/60 p-3">
           <p className="mb-2 font-display text-lg font-bold uppercase">{p.name}</p>
+          <p className="label mb-1">Practice programme</p>
+          <div className="mb-2 grid grid-cols-3 gap-2">
+            {Object.values(PRACTICE).map((pr) => (
+              <button
+                key={pr.key}
+                type="button"
+                title={pr.effect}
+                data-practice={`${p.carId}-${pr.key}`}
+                onClick={() => onPractice(p.carId, pr.key)}
+                className={`chip px-1 text-[11px] ${practice[p.carId] === pr.key ? 'bg-data text-slate-900' : 'chip-off'}`}
+              >
+                {pr.label}
+              </button>
+            ))}
+          </div>
+          <p className="mb-2 text-[11px] text-muted">{PRACTICE[practice[p.carId]]?.effect || 'Pick a programme'}</p>
+          <p className="label mb-1">Qualifying lap</p>
           <div className="grid grid-cols-2 gap-2">
             {[QUALI_MODE.Safe, QUALI_MODE.Push].map((m) => (
               <button

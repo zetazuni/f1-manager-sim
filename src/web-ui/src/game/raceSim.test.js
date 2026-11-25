@@ -4,7 +4,7 @@
 import SimulationEngine from '../services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from '../data/grid';
 import { mockTracks } from '../data/mockData';
-import { createRace, startRace, step, snapshot, lapFloat, setStrategy, FUEL, ERS } from './raceSim';
+import { createRace, startRace, step, snapshot, lapFloat, setStrategy, setTeamOrder, FUEL, ERS } from './raceSim';
 import { CALENDAR } from '../data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
 import { teamsWithCars, startProject, carRating } from './factory';
@@ -93,6 +93,53 @@ export function run() {
   const attack = runRace(11, (race) => race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { ersMode: ERS.Overtake, fuelMode: FUEL.Lean })));
   const avgPos = (r) => r.snap.rows.filter((x) => x.isPlayer).reduce((a, x) => a + x.pos, 0) / 2;
   stats.push({ neutralAvgPos: avgPos(neutral), overtakeLeanAvgPos: avgPos(attack) });
+
+  // Practice programmes and team orders
+  const runWith = (seed, practice, tweak) => {
+    const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed, practice });
+    race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true }));
+    startRace(race);
+    let guard = 0;
+    while (!race.over && guard++ < 200000) {
+      step(race, 0.5);
+      if (tweak) tweak(race);
+    }
+    return race;
+  };
+  const playerPos = (race) => snapshot(race).rows.filter((r) => r.isPlayer).reduce((x, r) => x + (r.dnf ? 21 : r.pos), 0) / 2;
+  // practice draws no random numbers, so lap 1 of the same seed differs by the bonus only
+  const lap1 = (practice) => {
+    // on pole, so no car ahead can hold it up and hide the difference
+    const gridOrder = ['zetrace-0', ...GRID_TEAMS.flatMap((t) => t.drivers.map((_, i) => `${t.id}-${i}`)).filter((id) => id !== 'zetrace-0')];
+    const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed: 41, practice, gridOrder });
+    startRace(race);
+    return race.cars.find((c) => c.id === 'zetrace-0').lapTime;
+  };
+  const setupGain = lap1({}) - lap1({ 'zetrace-0': 'setup' });
+  ok(Math.abs(setupGain - 0.18) < 0.01, `setup work should be worth 0.18 s on lap 1, got ${setupGain.toFixed(3)}`);
+  const noPrac = playerPos(runWith(41, {}));
+  const setupPrac = playerPos(runWith(41, { 'zetrace-0': 'setup', 'zetrace-1': 'setup' }));
+
+  const holdRace = runWith(44, {}, (race) => setTeamOrder(race, PLAYER_TEAM_ID, 'hold'));
+  const teamPasses = holdRace.events.filter((e) => /Danial Hakim passes Theo Laurent|Theo Laurent passes Danial Hakim/.test(e.message)).length;
+  ok(teamPasses === 0, `teammates passed each other ${teamPasses} times under hold`);
+
+  let swapAsked = null;
+  let swapDone = false;
+  runWith(45, {}, (race) => {
+    const [a, b] = race.cars.filter((c) => c.isPlayer && !c.dnf && !c.finished);
+    if (!a || !b) return;
+    const ahead = a.lapsDone > b.lapsDone || (a.lapsDone === b.lapsDone && a.lapStart < b.lapStart) ? a : b;
+    const behind = ahead === a ? b : a;
+    if (!swapAsked && a.lapsDone === b.lapsDone && a.lapsDone > 3 && behind.lapStart - ahead.lapStart < 2.5) {
+      swapAsked = { ahead: ahead.id, lap: ahead.lapsDone };
+      setTeamOrder(race, PLAYER_TEAM_ID, 'swap');
+    } else if (swapAsked && !swapDone && behind.lapsDone <= swapAsked.lap + 3 && ahead.id !== swapAsked.ahead) {
+      swapDone = true;
+    }
+  });
+  ok(!swapAsked || swapDone, 'swap order did not change the order of the two cars');
+  stats.push({ practice: { lap1Gain: +setupGain.toFixed(3), none: noPrac, setup: setupPrac }, holdTeamPasses: teamPasses, swapAsked: !!swapAsked, swapDone });
 
   // Rain: force a wet race and check that teams react and that it costs time
   const wetStats = [];
