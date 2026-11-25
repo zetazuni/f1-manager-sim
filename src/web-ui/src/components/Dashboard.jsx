@@ -1,6 +1,8 @@
 import React from 'react';
 import { ERS, FUEL, formatLap } from '../game/raceSim';
 import { playClickSound } from '../services/AudioManager';
+import { COMPOUNDS, COMPOUND_KEYS } from '../game/tyres';
+import TyreBadge from './TyreBadge';
 
 const EVENT_COLOR = {
   danger: 'text-red-400',
@@ -29,7 +31,7 @@ const Bar = ({ value, color, label }) => (
   </div>
 );
 
-const DriverCard = ({ row, totalLaps, focused, onFocus, onStrategy }) => {
+const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) => {
   const locked = row.dnf || row.finished;
   const need = Math.max(0, totalLaps - row.lapsDone) * row.fuelPerLap;
   const act = (change) => { playClickSound(); onStrategy(row.id, change); };
@@ -44,6 +46,19 @@ const DriverCard = ({ row, totalLaps, focused, onFocus, onStrategy }) => {
           {row.dnf ? <span className="text-red-400">DNF: {row.dnf}</span> : `${row.gap} | last ${formatLap(row.lastLap)}`}
         </span>
       </button>
+
+      <div className="mb-3 flex items-center gap-3 rounded-md bg-slate-950/50 px-3 py-2">
+        <TyreBadge compound={row.compound} size="lg" />
+        <div className="flex-1 text-xs">
+          <p className="font-bold">{COMPOUNDS[row.compound].name} <span className="font-normal text-slate-400">| {row.tyreAge} laps old</span></p>
+          <p className="text-slate-500">
+            Stops {row.stops} | used {row.compoundsUsed.map((k) => COMPOUNDS[k].name).join(', ')}
+            {row.compoundsUsed.length < 2 && started && <span className="text-amber-300"> | needs a 2nd compound</span>}
+          </p>
+        </div>
+        {row.inPit && <span className="rounded bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-900">IN PIT</span>}
+        {!row.inPit && row.pitRequest && <span className="animate-pulse rounded bg-sky-500 px-2 py-0.5 text-[10px] font-black">BOX THIS LAP</span>}
+      </div>
 
       <div className="mb-2 grid grid-cols-3 gap-3">
         <Bar label="Fuel kg" value={row.fuel} color="bg-yellow-400" />
@@ -62,18 +77,47 @@ const DriverCard = ({ row, totalLaps, focused, onFocus, onStrategy }) => {
           ))}
         </div>
         <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
+          <span className="label">{started ? 'Box for' : 'Start on'}</span>
+          {COMPOUND_KEYS.map((k) => {
+            const active = started ? row.pitRequest === k : row.compound === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                data-pit={k}
+                onClick={() => act(started ? { pitRequest: row.pitRequest === k ? null : k } : { compound: k })}
+                className={`${pill(active, 'bg-slate-500')} flex items-center justify-center gap-1.5`}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: COMPOUNDS[k].color }} />
+                {COMPOUNDS[k].name}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
           <span className="label">Fuel</span>
           {[FUEL.Lean, FUEL.Standard, FUEL.Rich].map((m) => (
             <button key={m} type="button" onClick={() => act({ fuelMode: m })} className={pill(row.fuelMode === m, 'bg-blue-600')}>{m}</button>
           ))}
         </div>
       </fieldset>
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-slate-400">
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 accent-sky-500"
+          checked={row.autoAi}
+          disabled={locked}
+          onChange={(e) => onStrategy(row.id, { autoAi: e.target.checked })}
+        />
+        Engineer strategy (the team plans pit stops and ERS for this car)
+      </label>
     </div>
   );
 };
 
 const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, onStrategy, onRestart, focusId, onFocus }) => {
-  const players = snap.rows.filter((r) => r.isPlayer);
+  // fixed order (driver 1, driver 2) so buttons never swap under the cursor when positions change
+  const players = snap.rows.filter((r) => r.isPlayer).sort((a, b) => a.id.localeCompare(b.id));
   const lapText = snap.over ? 'FINISHED' : `LAP ${snap.started ? snap.leaderLap : 0} / ${snap.totalLaps}`;
 
   return (
@@ -107,7 +151,7 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
 
       <div className="space-y-4">
         {players.map((row) => (
-          <DriverCard key={row.id} row={row} totalLaps={snap.totalLaps} focused={focusId === row.id} onFocus={onFocus} onStrategy={onStrategy} />
+          <DriverCard key={row.id} row={row} totalLaps={snap.totalLaps} started={snap.started} focused={focusId === row.id} onFocus={onFocus} onStrategy={onStrategy} />
         ))}
       </div>
 

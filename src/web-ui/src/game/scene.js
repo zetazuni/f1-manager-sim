@@ -1,4 +1,6 @@
 import * as pc from 'playcanvas';
+import { PIT_LANE, pitBoxFrac } from './raceSim';
+import { MeshBuilder, vertexColorMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
 
 export const TRACK_WIDTH = 7;
 
@@ -27,23 +29,16 @@ export function material(color, { emissive = null, gloss = 0.35, metalness = 0, 
 export const clearMaterialCache = () => {
   matCache.forEach((m) => m.destroy());
   matCache.clear();
+  clearVertexColorMaterials();
 };
 
 export function box(parent, { pos, scale, color, rot = [0, 0, 0], shadows = true, mat = null }) {
+  // A MeshBuilder (or { mb, group }) collects the box into a merged mesh instead
+  if (parent instanceof MeshBuilder) return parent.box({ pos, scale, rot, color });
+  if (parent && parent.mb) return parent.mb.box({ pos, scale, rot, color }, parent.group);
   const e = new pc.Entity();
   e.addComponent('render', { type: 'box', castShadows: shadows, receiveShadows: true });
   e.render.material = mat || material(color);
-  e.setLocalPosition(...pos);
-  e.setLocalEulerAngles(...rot);
-  e.setLocalScale(...scale);
-  parent.addChild(e);
-  return e;
-}
-
-function cylinder(parent, { pos, scale, color, rot = [0, 0, 0] }) {
-  const e = new pc.Entity();
-  e.addComponent('render', { type: 'cylinder', castShadows: true, receiveShadows: true });
-  e.render.material = material(color, { gloss: 0.15 });
   e.setLocalPosition(...pos);
   e.setLocalEulerAngles(...rot);
   e.setLocalScale(...scale);
@@ -87,6 +82,34 @@ function ribbon(device, path, inner, outer, y, filter = () => true) {
   return mesh;
 }
 
+/**
+ * Ribbon whose centre line moves sideways along the lap: centreAt(f) gives the
+ * lateral offset at lap fraction f. Used for the pit lane with its ramps.
+ */
+function laneRibbon(device, path, fFrom, fTo, centreAt, width, y, steps = 120) {
+  const positions = [];
+  const normals = [];
+  const indices = [];
+  for (let i = 0; i <= steps; i++) {
+    const f = fFrom + ((fTo - fFrom) * i) / steps;
+    const c = centreAt(f);
+    const a = path.pointAt(f, c - width / 2);
+    const b = path.pointAt(f, c + width / 2);
+    positions.push(a.x, y, a.z, b.x, y, b.z);
+    normals.push(0, 1, 0, 0, 1, 0);
+    if (i < steps) {
+      const v = i * 2;
+      indices.push(v, v + 2, v + 1, v + 1, v + 2, v + 3);
+    }
+  }
+  const mesh = new pc.Mesh(device);
+  mesh.setPositions(positions);
+  mesh.setNormals(normals);
+  mesh.setIndices(indices);
+  mesh.update();
+  return mesh;
+}
+
 function meshEntity(parent, mesh, mat, name) {
   const e = new pc.Entity(name);
   const mi = new pc.MeshInstance(mesh, mat);
@@ -95,11 +118,13 @@ function meshEntity(parent, mesh, mat, name) {
   return e;
 }
 
-export function buildCircuit(app, path) {
+export function buildCircuit(app, path, { teams = [] } = {}) {
   const device = app.graphicsDevice;
   const root = new pc.Entity('circuit');
   app.root.addChild(root);
   const half = TRACK_WIDTH / 2;
+  // all static boxes are collected here and baked into a single mesh at the end
+  const mb = new MeshBuilder();
 
   // Grass and run-off
   box(root, { pos: [0, -0.5, 0], scale: [420, 1, 420], color: '#1d4d2b', shadows: false });
@@ -127,10 +152,7 @@ export function buildCircuit(app, path) {
 
   // Start / finish chequered line at fraction 0
   const p0 = path.pointAt(0);
-  const finish = new pc.Entity('finish');
-  finish.setLocalPosition(p0.x, 0.07, p0.z);
-  finish.setLocalEulerAngles(0, p0.heading, 0);
-  root.addChild(finish);
+  const finish = { mb, group: { pos: [p0.x, 0.07, p0.z], rot: [0, p0.heading, 0] } };
   const squares = 10;
   for (let i = 0; i < squares; i++) {
     for (let r = 0; r < 2; r++) {
@@ -147,21 +169,57 @@ export function buildCircuit(app, path) {
   box(finish, { pos: [half + 1.5, 2.5, 0], scale: [0.5, 5, 0.5], color: '#9aa4b2' });
   box(finish, { pos: [0, 5, 0], scale: [TRACK_WIDTH + 3.5, 0.8, 0.6], color: '#e10600' });
 
-  // Paddock / pit building along the main straight (outside), grandstand opposite
-  box(root, { pos: [0, 2.5, -33], scale: [54, 5, 8], color: '#c7ccd4' });
-  box(root, { pos: [0, 5.2, -33], scale: [56, 0.4, 9], color: '#e10600' });
-  for (let i = 0; i < 9; i++) {
-    box(root, { pos: [-24 + i * 6, 1.5, -28.9], scale: [4.5, 3, 0.2], color: '#1f2937', shadows: false });
+  // Pit lane alongside the main straight, with entry and exit ramps
+  const ramp = 0.035;
+  const lat = PIT_LANE.lateral;
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const centreAt = (f) => {
+    if (f < PIT_LANE.start) return lat * smooth(Math.max(0, (f - (PIT_LANE.start - ramp)) / ramp));
+    if (f > PIT_LANE.end) return lat * smooth(Math.max(0, 1 - (f - PIT_LANE.end) / ramp));
+    return lat;
+  };
+  meshEntity(root, laneRibbon(device, path, PIT_LANE.start - ramp, PIT_LANE.end + ramp, centreAt, 3.6, 0.025),
+    material('#30343c', { gloss: 0.2, twoSided: true }), 'pitlane');
+  meshEntity(root, laneRibbon(device, path, PIT_LANE.start, PIT_LANE.end, () => lat - 1.9, 0.18, 0.05),
+    material('#facc15', { twoSided: true }), 'pit-line');
+  // Pit wall between the track and the pit lane
+  const wallSteps = 24;
+  for (let i = 0; i < wallSteps; i++) {
+    const f = PIT_LANE.start + ((PIT_LANE.end - PIT_LANE.start) * (i + 0.5)) / wallSteps;
+    const p = path.pointAt(f, -(TRACK_WIDTH / 2 + 2.6));
+    const seg = ((PIT_LANE.end - PIT_LANE.start) * path.total) / wallSteps;
+    box(mb, { pos: [p.x, 0.5, p.z], scale: [0.35, 1, seg * 1.02], rot: [0, p.heading, 0], color: i % 2 ? '#e5e7eb' : '#cbd5e1' });
   }
+
+  // Garages: one per team, in team colours, behind each team's pit box
+  const garageLen = 0.015 * path.total;
+  const slots = Math.max(teams.length, 10);
+  for (let i = 0; i < slots; i++) {
+    const team = teams[i];
+    const f = pitBoxFrac(i);
+    const p = path.pointAt(f, lat - 5.2);
+    const g = { mb, group: { pos: [p.x, 0, p.z], rot: [0, p.heading, 0] } };
+    // local axes: +Z along the track, +X towards the track (lateral is negative here)
+    box(g, { pos: [0, 2, -0.4], scale: [6, 4, garageLen * 0.96], color: '#d7dbe2' });
+    box(g, { pos: [2.95, 1.4, 0], scale: [0.2, 2.8, garageLen * 0.78], color: '#0b0f19', shadows: false });
+    box(g, { pos: [3.05, 3.4, 0], scale: [0.15, 0.7, garageLen * 0.9], color: team ? team.color : '#475569', shadows: false });
+    box(g, { pos: [3.9, 0.04, 0], scale: [1.6, 0.04, garageLen * 0.7], color: team ? team.accent : '#64748b', shadows: false });
+  }
+  // One long roof over the garage row
+  const r0 = path.pointAt(pitBoxFrac(0) - 0.012, lat - 5.6);
+  const r1 = path.pointAt(pitBoxFrac(slots - 1) + 0.012, lat - 5.6);
+  const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
+  const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
+  box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
   // Stepped grandstand inside the infield, facing the straight
   for (let step = 0; step < 5; step++) {
-    box(root, {
+    box(mb, {
       pos: [0, 0.6 + step * 0.9, -9 + step * 1.3],
       scale: [44, 1.2, 1.4],
       color: step % 2 ? '#3b5bdb' : '#4c6ef5',
     });
   }
-  box(root, { pos: [0, 6.2, -5.5], scale: [46, 0.3, 6], color: '#e5e7eb' });
+  box(mb, { pos: [0, 6.2, -5.5], scale: [46, 0.3, 6], color: '#e5e7eb' });
 
   // A few trees around the outside for scale
   const rng = mulberry32(7);
@@ -172,9 +230,12 @@ export function buildCircuit(app, path) {
     if (Math.abs(z + 33) < 8 && Math.abs(x) < 32) continue;
     if (z > -14 && z < 0 && Math.abs(x) < 26) continue;
     const s = 1 + rng() * 1.2;
-    cylinder(root, { pos: [x, s, z], scale: [0.5, s * 2, 0.5], color: '#5b3a1e' });
-    box(root, { pos: [x, s * 2 + 0.8, z], scale: [2.6 * s, 2.2 * s, 2.6 * s], color: '#2f7d32', rot: [0, rng() * 90, 0] });
+    mb.prism({ pos: [x, s, z], radius: 0.25, height: s * 2, sides: 6, color: '#5b3a1e' });
+    box(mb, { pos: [x, s * 2 + 0.8, z], scale: [2.6 * s, 2.2 * s, 2.6 * s], color: '#2f7d32', rot: [0, rng() * 90, 0] });
   }
+
+  const staticMesh = mb.build(device);
+  if (staticMesh) root.addChild(meshToEntity(staticMesh, vertexColorMaterial(false), { name: 'static-scenery' }));
   return root;
 }
 
@@ -199,48 +260,60 @@ function mulberry32(seed) {
 }
 
 /**
- * Low-poly F1 car, about 5 units long, nose pointing +Z.
+ * Low-poly F1 car, about 5 units long, nose pointing +Z, baked into ONE mesh.
  * `color` = team livery, `accent` = second livery colour.
  */
+const carMeshCache = new Map();
 export function buildCar(app, color, accent = '#111827') {
-  const car = new pc.Entity('car');
-  const body = material(color, { gloss: 0.7, metalness: 0.3 });
-  const trim = material(accent, { gloss: 0.5 });
-  const dark = material('#0f1115', { gloss: 0.3 });
-  const tyre = material('#141414', { gloss: 0.1 });
-
-  // floor + monocoque + nose
-  box(car, { pos: [0, 0.22, 0], scale: [1.5, 0.1, 4.2], mat: dark });
-  box(car, { pos: [0, 0.48, 0.2], scale: [0.7, 0.45, 2.6], mat: body });
-  box(car, { pos: [0, 0.38, 1.95], scale: [0.4, 0.25, 1.2], mat: body, rot: [-6, 0, 0] });
-  // sidepods
-  box(car, { pos: [0.62, 0.42, -0.2], scale: [0.5, 0.36, 1.7], mat: body });
-  box(car, { pos: [-0.62, 0.42, -0.2], scale: [0.5, 0.36, 1.7], mat: body });
-  // engine cover + airbox
-  box(car, { pos: [0, 0.72, -0.9], scale: [0.45, 0.35, 1.4], mat: trim });
-  box(car, { pos: [0, 0.98, -0.2], scale: [0.3, 0.3, 0.4], mat: trim });
-  // cockpit + halo
-  box(car, { pos: [0, 0.72, 0.5], scale: [0.45, 0.12, 0.6], mat: dark });
-  box(car, { pos: [0, 0.92, 0.55], scale: [0.5, 0.06, 0.7], mat: dark });
-  // front wing
-  box(car, { pos: [0, 0.18, 2.55], scale: [1.9, 0.06, 0.45], mat: trim });
-  box(car, { pos: [0.95, 0.28, 2.55], scale: [0.06, 0.25, 0.5], mat: body });
-  box(car, { pos: [-0.95, 0.28, 2.55], scale: [0.06, 0.25, 0.5], mat: body });
-  // rear wing
-  box(car, { pos: [0, 1.0, -2.05], scale: [1.3, 0.08, 0.4], mat: trim });
-  box(car, { pos: [0, 0.88, -2.05], scale: [1.3, 0.06, 0.3], mat: body });
-  box(car, { pos: [0.65, 0.75, -2.05], scale: [0.06, 0.6, 0.5], mat: body });
-  box(car, { pos: [-0.65, 0.75, -2.05], scale: [0.06, 0.6, 0.5], mat: body });
-  // wheels (cylinder axis is Y, so roll it 90 degrees around Z)
-  for (const [x, z, w] of [[0.95, 1.45, 0.38], [-0.95, 1.45, 0.38], [0.98, -1.35, 0.48], [-0.98, -1.35, 0.48]]) {
-    const wheel = new pc.Entity('wheel');
-    wheel.addComponent('render', { type: 'cylinder', castShadows: true });
-    wheel.render.material = tyre;
-    wheel.setLocalPosition(x, 0.36, z);
-    wheel.setLocalEulerAngles(0, 0, 90);
-    wheel.setLocalScale(0.72, w, 0.72);
-    car.addChild(wheel);
+  const key = `${color}|${accent}`;
+  let mesh = carMeshCache.get(key);
+  if (!mesh || mesh.device !== app.graphicsDevice) {
+    const mb = new MeshBuilder();
+    const body = color;
+    const trim = accent;
+    const dark = '#121418';
+    const tyre = '#16171a';
+    // floor
+    mb.box({ pos: [0, 0.2, -0.1], scale: [1.55, 0.08, 4.0], color: dark });
+    // monocoque, nose tapering in three steps
+    mb.box({ pos: [0, 0.48, 0.1], scale: [0.72, 0.46, 2.4], color: body });
+    mb.box({ pos: [0, 0.42, 1.55], scale: [0.5, 0.32, 0.8], color: body });
+    mb.box({ pos: [0, 0.34, 2.15], scale: [0.34, 0.2, 0.6], color: body, rot: [-5, 0, 0] });
+    // sidepods with livery stripe and radiator inlets
+    for (const sx of [1, -1]) {
+      mb.box({ pos: [0.62 * sx, 0.42, -0.25], scale: [0.5, 0.36, 1.6], color: body });
+      mb.box({ pos: [0.62 * sx, 0.61, -0.25], scale: [0.4, 0.03, 1.4], color: trim });
+      mb.box({ pos: [0.62 * sx, 0.42, 0.62], scale: [0.42, 0.26, 0.16], color: dark });
+    }
+    // engine cover, shark fin, airbox
+    mb.box({ pos: [0, 0.72, -0.95], scale: [0.46, 0.36, 1.45], color: body });
+    mb.box({ pos: [0, 0.95, -1.15], scale: [0.05, 0.35, 1.1], color: trim });
+    mb.box({ pos: [0, 0.99, -0.2], scale: [0.3, 0.3, 0.42], color: dark });
+    // cockpit, helmet, halo
+    mb.box({ pos: [0, 0.73, 0.5], scale: [0.46, 0.1, 0.65], color: dark });
+    mb.box({ pos: [0, 0.8, 0.35], scale: [0.24, 0.22, 0.24], color: '#f8fafc' });
+    mb.box({ pos: [0, 0.98, 0.55], scale: [0.5, 0.05, 0.62], color: trim });
+    mb.box({ pos: [0, 0.86, 0.86], scale: [0.05, 0.2, 0.05], color: trim });
+    // front wing: main plane, flap, endplates
+    mb.box({ pos: [0, 0.16, 2.55], scale: [1.95, 0.05, 0.45], color: trim });
+    mb.box({ pos: [0, 0.22, 2.42], scale: [1.85, 0.04, 0.22], color: body, rot: [-12, 0, 0] });
+    for (const sx of [1, -1]) mb.box({ pos: [0.98 * sx, 0.26, 2.55], scale: [0.05, 0.26, 0.5], color: body });
+    // rear wing: main plane, flap, endplates, pillar, diffuser
+    mb.box({ pos: [0, 1.02, -2.05], scale: [1.32, 0.07, 0.36], color: trim });
+    mb.box({ pos: [0, 1.12, -2.15], scale: [1.32, 0.05, 0.22], color: body, rot: [15, 0, 0] });
+    for (const sx of [1, -1]) mb.box({ pos: [0.67 * sx, 0.8, -2.05], scale: [0.05, 0.62, 0.52], color: body });
+    mb.box({ pos: [0, 0.72, -1.95], scale: [0.08, 0.55, 0.12], color: dark });
+    mb.box({ pos: [0, 0.4, -2.12], scale: [1.0, 0.18, 0.3], color: dark });
+    // wheels: 10-sided tyres on their side, grey rim centres
+    for (const [x, z, w] of [[0.98, 1.45, 0.36], [-0.98, 1.45, 0.36], [1.0, -1.35, 0.46], [-1.0, -1.35, 0.46]]) {
+      mb.prism({ pos: [x, 0.36, z], radius: 0.36, height: w, sides: 10, color: tyre, rot: [0, 0, 90] });
+      mb.prism({ pos: [x + Math.sign(x) * (w / 2 + 0.005), 0.36, z], radius: 0.17, height: 0.02, sides: 10, color: '#9ca3af', rot: [0, 0, 90] });
+    }
+    mesh = mb.build(app.graphicsDevice);
+    carMeshCache.set(key, mesh);
   }
+  const car = meshToEntity(mesh, vertexColorMaterial(true), { name: 'car' });
   app.root.addChild(car);
   return car;
 }
+export const clearCarMeshCache = () => carMeshCache.clear();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatLap } from '../game/raceSim';
+import TyreBadge from './TyreBadge';
 
 const TimingTower = ({ snap, focusId, onFocus }) => (
   <aside className="panel p-4 lg:col-span-2 2xl:col-span-1">
@@ -17,6 +18,7 @@ const TimingTower = ({ snap, focusId, onFocus }) => (
           <th className="py-1 pr-2">Pos</th>
           <th className="py-1 pr-2">Driver</th>
           <th className="py-1 pr-2 text-right">Gap</th>
+          <th className="py-1 pr-2">Tyre</th>
           <th className="hidden py-1 pr-2 text-right sm:table-cell">Last</th>
           <th className="py-1 text-right">Grid</th>
         </tr>
@@ -39,7 +41,13 @@ const TimingTower = ({ snap, focusId, onFocus }) => (
                 <span className={r.isPlayer ? 'font-bold text-white' : ''}>{r.code}</span>
                 <span className="ml-2 hidden text-slate-500 md:inline">{r.team}</span>
               </td>
-              <td className="py-1.5 pr-2 text-right">{r.gap}</td>
+              <td className="py-1.5 pr-2 text-right">{r.inPit ? <span className="font-bold text-amber-300">PIT</span> : r.gap}</td>
+              <td className="py-1.5 pr-2">
+                <span className="flex items-center gap-1">
+                  <TyreBadge compound={r.compound} />
+                  <span className="text-[10px] text-slate-500">{r.stops}</span>
+                </span>
+              </td>
               <td className={`hidden py-1.5 pr-2 text-right sm:table-cell ${isFastest ? 'text-purple-400' : ''}`}>{formatLap(r.lastLap)}</td>
               <td className={`py-1.5 text-right ${moved > 0 ? 'text-emerald-400' : moved < 0 ? 'text-red-400' : 'text-slate-500'}`}>
                 {moved > 0 ? `+${moved}` : moved < 0 ? moved : '='}

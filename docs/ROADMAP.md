@@ -27,16 +27,17 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - UI: player panel with per-driver ERS/fuel, race speed 1x/2x/4x, live timing tower (gap, last lap, fastest lap, grid +/-; click to follow a car), radio feed of real race events, result modal with points and New race.
 - Tests: `src/game/raceSim.test.js` (5 seeded races + fuel and ERS balance checks), `tools/checks/m2-race.json` (full race in the real app).
 
-## M3 Tyres and pit stops (NEXT)
+## M3 Tyres and pit stops (DONE, 2026-11-26)
 
-- Tyre wear is tracked (Overtake wears 30% faster) but barely affects pace yet: make it matter here.
+- `src/game/tyres.js`: Soft / Medium / Hard (pace -0.9 / 0 / +0.7 s), wear per lap scaled by track, driver tyre management, ERS and fuel mode; time loss grows with wear squared plus a cliff above 80 %; punctures possible above 90 %.
+- Pit stops: box request served at the line; pit lane loss (track `pitLoss`, default 20 s) plus a 2.2 to 3 s stop, 4 % chance of a slow stop.
+- Two-compound rule: 10 s added at the finish if only one compound was used.
+- AI: personal wear limit, picks the softest compound that reaches the flag, respects the rule. Most AI cars two-stop, some one-stop.
+- Player: starting tyre on the grid, Box for Soft/Medium/Hard (press again to cancel), tyre warnings, "Engineer strategy" toggle hands a car to the AI.
+- 3D: pit lane with entry and exit ramps, pit wall, team-coloured garages; cars drive in, stop at their own garage and rejoin.
+- Graphics performance: static scenery and every car are now merged vertex-colour meshes (`src/game/meshBuilder.js`): 1071 draw calls down to 53. Race speed no longer depends on frame rate.
 
-- Soft / Medium / Hard compounds with different pace and wear.
-- Pit button per player driver with compound choice; pit lane time loss.
-- Two-compound rule; AI pit strategy.
-- Cars visibly enter the pit lane in 3D.
-
-## M4 Race weekend and season (LATER)
+## M4 Race weekend and season (NEXT)
 
 - Several circuits (different spline layouts in `src/game/trackPath.js`).
 - Qualifying sets the grid.

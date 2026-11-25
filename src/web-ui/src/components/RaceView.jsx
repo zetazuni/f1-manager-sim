@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as pc from 'playcanvas';
 import { makeTrackPath } from '../game/trackPath';
-import { buildCircuit, buildCar, clearMaterialCache } from '../game/scene';
+import { buildCircuit, buildCar, clearMaterialCache, clearCarMeshCache } from '../game/scene';
 
 /**
  * 3D race view.
@@ -10,7 +10,7 @@ import { buildCircuit, buildCar, clearMaterialCache } from '../game/scene';
  * Reading a ref (not props) keeps the cars moving smoothly between React renders,
  * and the PlayCanvas app is created once instead of on every prop change.
  */
-const RaceView = ({ carsRef, focusId = null }) => {
+const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
   const canvasRef = useRef(null);
   const focusRef = useRef(focusId);
   useEffect(() => {
@@ -64,7 +64,7 @@ const RaceView = ({ carsRef, focusId = null }) => {
     app.root.addChild(sun);
 
     const path = makeTrackPath();
-    buildCircuit(app, path);
+    buildCircuit(app, path, { teams });
 
     // Auto-fit: project the track into the camera's view plane and size the
     // orthographic view so the whole circuit fits the canvas, whatever its shape.
@@ -142,9 +142,10 @@ const RaceView = ({ carsRef, focusId = null }) => {
       ro.disconnect();
       app.destroy();
       clearMaterialCache();
+      clearCarMeshCache();
       if (window.__zetrace?.app === app) delete window.__zetrace;
     };
-  }, [carsRef]);
+  }, [carsRef, teams]);
 
   return (
     <div className="relative">
