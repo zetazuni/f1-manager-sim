@@ -112,3 +112,37 @@ export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 360) {
 
   return { points, total, pointAt };
 }
+
+/**
+ * Speed shaping: cars brake into corners and accelerate out instead of moving
+ * at one speed. Speed at each sample falls with curvature, is smoothed into
+ * braking and acceleration zones, then integrated into time. The result maps
+ * "fraction of the lap time" (what the simulation knows) to "fraction of the
+ * lap distance" (where to draw the car). Lap times do not change.
+ */
+export function makeTimeProfile(path, { cornerFactor = 14, smooth = 7 } = {}) {
+  const n = path.points.length;
+  const raw = path.points.map((p) => 1 / (1 + cornerFactor * Math.abs(p.curvature)));
+  const speed = raw.map((_, i) => {
+    let s = 0;
+    for (let k = -smooth; k <= smooth; k++) s += raw[(i + k + n) % n];
+    return s / (2 * smooth + 1);
+  });
+  // cumulative time at each sample boundary (equal distance per sample)
+  const cumT = [0];
+  for (let i = 0; i < n; i++) cumT.push(cumT[i] + 1 / speed[i]);
+  const total = cumT[n];
+  /** time fraction (any real number) -> distance fraction */
+  return (tau) => {
+    const lap = Math.floor(tau);
+    const t = (tau - lap) * total;
+    let lo = 0;
+    let hi = n;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (cumT[mid] <= t) lo = mid; else hi = mid;
+    }
+    const segT = cumT[lo + 1] - cumT[lo] || 1;
+    return lap + (lo + (t - cumT[lo]) / segT) / n;
+  };
+}

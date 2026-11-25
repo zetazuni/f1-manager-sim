@@ -63,18 +63,28 @@ export function run() {
   // Rich fuel for the whole race should run a player car dry
   const rich = runRace(9, (race) => race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { fuelMode: FUEL.Rich })));
   const richPlayer = rich.race.cars.filter((c) => c.isPlayer);
-  ok(richPlayer.every((c) => c.dnf === 'Out of fuel'), `rich fuel all race should run out: ${richPlayer.map((c) => c.dnf).join(',')}`);
+  // (a car can crash before it runs dry; every other one must run out)
+  ok(richPlayer.every((c) => c.dnf === 'Out of fuel' || c.dnf === 'Crashed') && richPlayer.some((c) => c.dnf === 'Out of fuel'),
+    `rich fuel all race should run out: ${richPlayer.map((c) => c.dnf).join(',')}`);
 
   // Player never pits: worn tyres must hurt (puncture or penalty) and cost places
   const noStop = runRace(21);
   const ns = noStop.race.cars.filter((c) => c.isPlayer);
   const hurt = ns.every((c) => c.dnf || c.penalty > 0 || c.stops > 0);
   ok(hurt, 'a player car that never pits got away with it');
-  // Same race with the engineer (AI) running the player's strategy
-  const engineer = runRace(21, (race) => race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true })));
+  // Engineer (AI) strategy vs never pitting, averaged over five seeds (crashes
+  // make a single race too noisy to compare two cars)
   const posOf = (r, c) => (c.dnf ? 21 : r.snap.rows.find((x) => x.id === c.id).pos);
-  const nsAvg = ns.reduce((a, c) => a + posOf(noStop, c), 0) / 2;
-  const engAvg = engineer.race.cars.filter((c) => c.isPlayer).reduce((a, c) => a + posOf(engineer, c), 0) / 2;
+  let nsSum = 0;
+  let engSum = 0;
+  [21, 22, 23, 24, 25].forEach((sd) => {
+    const a = runRace(sd);
+    const b = runRace(sd, (race) => race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true })));
+    nsSum += a.race.cars.filter((c) => c.isPlayer).reduce((x, c) => x + posOf(a, c), 0);
+    engSum += b.race.cars.filter((c) => c.isPlayer).reduce((x, c) => x + posOf(b, c), 0);
+  });
+  const nsAvg = nsSum / 10;
+  const engAvg = engSum / 10;
   ok(engAvg < nsAvg, `engineer strategy (avg P${engAvg}) should beat never pitting (avg P${nsAvg})`);
   stats.push({ noStopAvgPos: nsAvg, engineerAvgPos: engAvg });
 

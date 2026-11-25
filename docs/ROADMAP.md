@@ -88,6 +88,16 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Regulation reset: car gaps shrink by 40 %, projects cleared, new season funding. Year advances (2027, 2028, ...).
 - Tests: two-season career test (ageing, signing, no empty or double seats, points reset, field closes up, new signing races); `tools/checks/m8-market.json` plays the finale and the market in the real app.
 
+## M9 Graphics pass (DONE, 2026-11-26)
+
+- Speed shaping (`makeTimeProfile` in `trackPath.js`): cars brake into corners and accelerate out; lap times unchanged.
+- Camera modes over the 3D view: Overview (isometric, scroll zoom), Chase (perspective, rigidly behind the selected car) and TV (eight trackside cameras, cuts to the nearest one with a zoom lens).
+- Live mini-map HUD with a dot per car (player cars ringed cyan, safety car amber, selected car white).
+- Real grid: 4.4 units per slot, staggered left and right, painted grid boxes.
+- ACES tone mapping and sRGB output.
+- Races are now fully reproducible from their seed (the engine's lap time variance uses the race RNG), which made two flaky balance checks deterministic; the engineer-vs-no-stop check now averages five seeds.
+- Test: `tools/checks/m9-cameras.json`.
+
 ## Ideas for later
 
 - Practice sessions with setup work, team orders between your two drivers, driver morale.

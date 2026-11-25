@@ -1,5 +1,6 @@
 import * as pc from 'playcanvas';
 import { pitLayout } from './trackPath';
+import { GRID_SLOT_UNITS } from './raceSim';
 import { MeshBuilder, vertexColorMaterial, glowMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
 
@@ -168,6 +169,16 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
       });
     }
   }
+  // Painted grid slots behind the line: GRID_SLOT_UNITS apart, staggered
+  // left/right exactly where carPose puts the cars before the start
+  for (let i = 0; i < 20; i++) {
+    const p = path.pointAt(-(i * GRID_SLOT_UNITS) / path.total, i % 2 ? 1.7 : -1.7);
+    const g = { mb, group: { pos: [p.x, 0.065, p.z], rot: [0, p.heading, 0] } };
+    box(g, { pos: [0, 0, 2.7], scale: [2.2, 0.02, 0.18], color: '#f8fafc' });
+    box(g, { pos: [1.05, 0, 2.2], scale: [0.14, 0.02, 1.0], color: '#f8fafc' });
+    box(g, { pos: [-1.05, 0, 2.2], scale: [0.14, 0.02, 1.0], color: '#f8fafc' });
+  }
+
   // Gantry over the line
   box(finish, { pos: [-half - 1.5, 2.5, 0], scale: [0.5, 5, 0.5], color: '#9aa4b2' });
   box(finish, { pos: [half + 1.5, 2.5, 0], scale: [0.5, 5, 0.5], color: '#9aa4b2' });

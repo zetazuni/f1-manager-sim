@@ -52,6 +52,7 @@ const carById = (teams, carId) => {
  */
 export function runQualifying({ teams, track, engine, playerTeamId, modes = {}, seed }) {
   const rng = makeRng(seed);
+  engine.random = rng;
   const rows = carIdsOf(teams).map((carId) => {
     const { team, driver } = carById(teams, carId);
     const isPlayer = team.id === playerTeamId;
