@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) => (
-  <tr className={`border-t border-line ${highlight ? 'bg-data/10 text-white' : 'text-slate-300'}`}>
+  <tr className={`border-t border-line ${highlight ? 'bg-data/10 text-white' : 'text-cream/75'}`}>
     <td className="py-2 pr-3 text-right font-mono text-xs font-bold">{pos}</td>
     <td className="py-2 pr-3">
       <span className="flex items-center gap-2">
@@ -23,7 +23,7 @@ const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) =
 );
 
 const StandingsView = ({ table, teamsTable, roundsDone, total }) => (
-  <div className="grid gap-5 xl:grid-cols-2">
+  <div className="screen-enter grid gap-5 xl:grid-cols-2">
     <section className="panel p-5">
       <div className="mb-3 flex items-baseline justify-between">
         <h3 className="panel-title">Drivers championship</h3>

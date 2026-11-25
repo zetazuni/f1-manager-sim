@@ -3,7 +3,7 @@ import TrackMap from './TrackMap';
 import { ENVIRONMENTS } from '../game/environments';
 
 const CalendarView = ({ calendar, round, results, nameOf, seasonDone }) => (
-  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="calendar">
+  <div className="screen-enter grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-testid="calendar">
     {calendar.map((t, i) => {
       const res = results[i];
       const winner = res ? nameOf(res.rows.find((r) => r.pos === 1)?.carId) : null;
@@ -11,17 +11,17 @@ const CalendarView = ({ calendar, round, results, nameOf, seasonDone }) => (
       return (
         <article
           key={t.id}
-          className={`panel relative overflow-hidden p-4 ${status === 'next' ? 'ring-1 ring-f1-red/70' : ''} ${status === 'upcoming' ? 'opacity-80' : ''}`}
+          className={`panel relative overflow-hidden p-4 ${status === 'next' ? 'ring-1 ring-lantern/60' : ''} ${status === 'upcoming' ? 'opacity-80' : ''}`}
         >
           <div className="flex items-start justify-between">
             <div>
               <p className="label">Round {i + 1} | {t.country}</p>
-              <h3 className="display text-xl italic leading-tight">{t.name}</h3>
+              <h3 className="display text-xl leading-tight">{t.name}</h3>
               <p className="text-xs text-muted">{ENVIRONMENTS[t.env].label} | {t.laps} laps</p>
             </div>
-            <span className={`rounded px-2 py-0.5 font-display text-[11px] font-bold uppercase tracking-widest ${
-              status === 'done' ? 'bg-emerald-500/20 text-emerald-300' : status === 'next' ? 'bg-f1-red text-white' : 'bg-line-2 text-muted'
-            }`}
+            <span className={`rounded px-2 py-0.5 font-display text-[11px] font-bold ${
+ status === 'done' ? 'bg-data/15 text-data' : status === 'next' ? 'bg-gradient-to-r from-lantern to-rose text-ink' : 'bg-line-2 text-muted'
+ }`}
             >
               {status === 'done' ? 'Done' : status === 'next' ? 'Next' : 'Upcoming'}
             </span>

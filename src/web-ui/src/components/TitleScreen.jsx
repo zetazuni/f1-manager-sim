@@ -9,14 +9,14 @@ const TitleScreen = ({ saveInfo, onContinue, onNew }) => (
     <div className="pointer-events-none absolute inset-0 grid grid-cols-3 gap-10 p-10 opacity-[0.07]">
       {CALENDAR.map((t) => <TrackMap key={t.id} points={t.points} className="h-full w-full" width={3} showPit={false} />)}
     </div>
-    <div className="pointer-events-none absolute -left-40 top-1/3 h-[480px] w-[480px] rounded-full bg-f1-red/20 blur-3xl" />
-    <div className="pointer-events-none absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-data/10 blur-3xl" />
+    <div className="pointer-events-none absolute -left-40 top-1/3 h-[480px] w-[480px] rounded-full bg-lantern/20 blur-3xl" />
+    <div className="pointer-events-none absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-rose/15 blur-3xl" />
 
     <div className="relative w-full max-w-xl text-center">
-      <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl bg-f1-red font-display text-5xl font-bold italic shadow-[0_0_60px_rgba(225,6,0,0.55)]">Z</div>
-      <h1 className="font-display text-6xl font-bold italic tracking-wide sm:text-7xl">ZETRACE</h1>
-      <p className="mt-1 font-display text-sm uppercase tracking-[0.6em] text-muted">F1 Manager</p>
-      <p className="mx-auto mt-6 max-w-md text-slate-300">
+      <div className="lamp-glow mx-auto mb-6 grid h-20 w-20 place-items-center rounded-3xl bg-f1-red font-display text-5xl font-bold">Z</div>
+      <h1 className="display bg-gradient-to-b from-cream via-cream to-lantern bg-clip-text pb-2 text-7xl text-transparent sm:text-8xl">Zetrace</h1>
+      <p className="font-display text-base font-medium text-muted">an F1 manager for quiet evenings</p>
+      <p className="mx-auto mt-6 max-w-md text-cream/75">
         Run Zetrace Racing from the pit wall: strategy, tyres and weather on race day, upgrades in the factory, and drivers on the market.
       </p>
 
