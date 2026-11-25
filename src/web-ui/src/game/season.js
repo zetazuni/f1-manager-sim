@@ -5,6 +5,7 @@
 import { POINTS } from '../data/grid';
 import { makeRng } from './raceSim';
 import { createTeamStates, settleRound } from './factory';
+import { createCareer } from './career';
 
 export const QUALI_MODE = { Safe: 'Safe', Push: 'Push' };
 const PUSH_GAIN = 0.25; // s found by pushing
@@ -35,6 +36,7 @@ export function createSeason({ teams, calendar, playerTeamId, seed = Date.now() 
     teams: createTeamStates(teams, playerTeamId), // budgets, developed cars, projects
     ledger: [], // player money in and out: { round, label, amount ($M) }
     news: [], // messages from the last round (upgrades fitted, sponsor bonus)
+    career: createCareer(teams), // year, driver registry, lineups, history
   };
 }
 

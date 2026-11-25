@@ -4,12 +4,14 @@ import StandingsView from './components/StandingsView';
 import CalendarView from './components/CalendarView';
 import FactoryView from './components/FactoryView';
 import SettingsDialog from './components/SettingsDialog';
+import OffSeasonScreen from './components/OffSeasonScreen';
 import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
 import { CALENDAR } from './data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
-import { startProject, teamsWithCars } from './game/factory';
+import { startProject } from './game/factory';
+import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './game/career';
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
 
@@ -46,9 +48,8 @@ function App() {
   const [settings, setSettings] = useState(loadSettings);
   const [speed, setSpeed] = useState(settings.speed);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const playerTeam = GRID_TEAMS.find((t) => t.id === PLAYER_TEAM_ID);
-  const playerCars = playerTeam.drivers.map((d, i) => ({ carId: `${PLAYER_TEAM_ID}-${i}`, name: d.name }));
-  const defaultModes = () => Object.fromEntries(playerCars.map((p) => [p.carId, QUALI_MODE.Safe]));
+  const seatIds = [0, 1].map((i) => `${PLAYER_TEAM_ID}-${i}`);
+  const defaultModes = () => Object.fromEntries(seatIds.map((id) => [id, QUALI_MODE.Safe]));
   const [modes, setModes] = useState(() => boot.modes || defaultModes());
 
   // Autosave the career whenever it changes
@@ -74,18 +75,22 @@ function App() {
     if (new URLSearchParams(window.location.search).get('rain') === '1') t.rainChance = 1;
     return t;
   }, [calTrack]);
-  const table = useMemo(() => standings(season, GRID_TEAMS), [season]);
+  // grid teams with this season's lineups, developed cars and budgets
+  const seasonTeams = useMemo(() => teamsForSeason(GRID_TEAMS, season), [season]);
+  const raceTeams = seasonTeams;
+  const table = useMemo(() => standings(season, seasonTeams), [season, seasonTeams]);
   const done = season.phase === 'done';
-  // grid teams with this season's developed cars and budgets
-  const raceTeams = useMemo(() => teamsWithCars(GRID_TEAMS, season.teams), [season.teams]);
+  const inMarket = season.phase === 'market';
+  const year = season.career?.year;
+  const playerCars = seasonTeams.find((t) => t.id === PLAYER_TEAM_ID).drivers.map((d, i) => ({ carId: seatIds[i], name: d?.name || 'Empty seat' }));
 
   const nameOf = useCallback((carId) => {
     if (!carId) return { name: '-', color: '#64748b', isPlayer: false };
     const cut = carId.lastIndexOf('-');
-    const team = GRID_TEAMS.find((t) => t.id === carId.slice(0, cut));
-    const driver = team.drivers[Number(carId.slice(cut + 1))];
-    return { name: driver.name, color: team.color, isPlayer: team.id === PLAYER_TEAM_ID };
-  }, []);
+    const team = seasonTeams.find((t) => t.id === carId.slice(0, cut));
+    const driver = team?.drivers[Number(carId.slice(cut + 1))];
+    return { name: driver?.name || '-', color: team?.color || '#64748b', isPlayer: team?.id === PLAYER_TEAM_ID };
+  }, [seasonTeams]);
 
   const qualify = () => {
     const quali = runQualifying({
@@ -95,7 +100,7 @@ function App() {
   };
   const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
   const onFinished = useCallback((snap, fastestCarId) => {
-    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, GRID_TEAMS));
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s)));
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
@@ -104,8 +109,26 @@ function App() {
     if (res.ok) setSeason(res.season);
     return res;
   };
-  const restartSeason = () => {
-    setSeason(newSeason());
+  // Season finale -> off-season driver market -> next season
+  const toOffSeason = () => {
+    setSeason((s) => {
+      const tables = standings(s, teamsForSeason(GRID_TEAMS, s));
+      const next = startOffSeason(s, GRID_TEAMS, tables.teams);
+      const h = next.career.history[next.career.history.length - 1];
+      h.champion = tables.drivers[0].name;
+      h.constructorsChampion = tables.teams[0].name;
+      return next;
+    });
+    setTab('weekend');
+  };
+  const teamPos = table.teams.findIndex((t) => t.isPlayer) + 1;
+  const sign = (driverId, seat, years) => {
+    const res = signDriver(season, PLAYER_TEAM_ID, driverId, seat, years, teamPos);
+    if (res.ok) setSeason(res.season);
+    return res;
+  };
+  const startNextSeason = () => {
+    setSeason((s) => finishOffSeason(s, GRID_TEAMS, PLAYER_TEAM_ID, standings(s, teamsForSeason(GRID_TEAMS, s)).teams));
     setTab('weekend');
   };
   const resetCareer = () => {
@@ -138,7 +161,7 @@ function App() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-4 py-2 text-right">
-            {!done && (
+            {!done && !inMarket && (
               <ol className="hidden items-center gap-1 md:flex" aria-label="Weekend progress">
                 {phaseSteps.map((p, i) => {
                   const idx = phaseSteps.indexOf(season.phase);
@@ -154,8 +177,8 @@ function App() {
               </ol>
             )}
             <div>
-              <p className="label">{done ? 'Season complete' : roundLabel}</p>
-              <p className="font-display text-sm font-bold uppercase tracking-wider">{done ? 'Final standings' : calTrack.name}</p>
+              <p className="label">{year} | {done ? 'Season complete' : inMarket ? 'Off-season' : roundLabel}</p>
+              <p className="font-display text-sm font-bold uppercase tracking-wider">{done ? 'Final standings' : inMarket ? 'Driver market' : calTrack.name}</p>
             </div>
             <button
               type="button"
@@ -179,14 +202,17 @@ function App() {
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
         {tab === 'hq' && (
-          <FactoryView season={season} teams={GRID_TEAMS} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
+          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
         )}
         {tab === 'calendar' && (
           <CalendarView calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
         )}
         {tab === 'weekend' && (
           <>
-            {done && <SeasonDone table={table.drivers} teamsTable={table.teams} onNewSeason={restartSeason} />}
+            {done && <SeasonDone table={table.drivers} teamsTable={table.teams} onNewSeason={toOffSeason} />}
+            {inMarket && (
+              <OffSeasonScreen season={season} playerTeamId={PLAYER_TEAM_ID} teamPos={teamPos} onSign={sign} onStart={startNextSeason} teamName={(id) => GRID_TEAMS.find((t) => t.id === id)?.name || id} />
+            )}
             {season.phase === 'preview' && (
               <PreviewPanel
                 track={calTrack}

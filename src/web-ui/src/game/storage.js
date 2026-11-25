@@ -2,6 +2,7 @@
 // a JSON round trip plus a version check and a small migration step.
 
 import { createTeamStates } from './factory';
+import { createCareer } from './career';
 
 const KEY = 'zetrace.career.v1';
 const SETTINGS_KEY = 'zetrace.settings.v1';
@@ -50,6 +51,7 @@ export function loadCareer({ teams, playerTeamId }) {
   if (!season.teams) season.teams = createTeamStates(teams, playerTeamId);
   if (!season.ledger) season.ledger = [];
   if (!season.news) season.news = [];
+  if (!season.career) season.career = createCareer(teams);
   if (season.phase === 'race') season.phase = season.quali ? 'quali' : 'preview';
   return { ...data, season };
 }
