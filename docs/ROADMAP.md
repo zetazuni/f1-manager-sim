@@ -50,12 +50,16 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - `tools/check-ui.mjs`: `waitFor` steps, hard time limit, and it now kills the whole headless browser tree (369 orphaned browsers had piled up).
 - Tests: full 6-round season in `raceSim.test.js`; `tools/checks/m4-weekend.json` drives a whole weekend in the real app.
 
-## M5 Factory and finances (NEXT)
+## M5 Factory and finances (DONE, 2026-11-26)
 
-- `FactoryView` upgrades spend budget and change car stats (aero, power unit, ERS, weight, reliability).
-- Sponsors, prize money by position, driver salaries between races.
+- `src/game/factory.js`: six development areas (high/low-speed aero, power unit, ERS, chassis weight, reliability), three tiers (Small +1.5 / 1 race, Medium +3.0 / 2 races, Major +5.5 / 3 races with a 20 % risk the gain is halved), two projects at once, costs rise near the 99.5 ceiling.
+- Money per round: prize (1.5 + 0.3 per point, $M), title sponsor, a rotating sponsor objective (both cars in the points, top 5, +5 places, both finish, podium), driver salaries and running costs. Player starts with a $30M development budget.
+- AI teams develop their weakest areas when they can afford it, so the order changes over a season.
+- Developed cars feed qualifying and races (`teamsWithCars`); cars are frozen for the duration of a race.
+- Team HQ tab: budget, car rating and rank, factory slots, sponsor objective, bullet chart of our car vs grid best and average (with table view and hover details; series colour validated with the dataviz validator), projects in progress, upgrade catalogue, ledger.
+- Tests: season test buys upgrades and checks budgets, ledger, ceiling and that cars improve; `tools/checks/m5-hq.json` buys upgrades in the real app and races a round.
 
-## M6 Save, settings and polish (LATER)
+## M6 Save, settings and polish (NEXT)
 
 - Save/load career in localStorage.
 - Settings (sound, quality), audio pass, mobile layout check.

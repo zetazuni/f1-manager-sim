@@ -7,6 +7,7 @@ import { mockTracks } from '../data/mockData';
 import { createRace, startRace, step, snapshot, lapFloat, setStrategy, FUEL, ERS } from './raceSim';
 import { CALENDAR } from '../data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
+import { teamsWithCars, startProject, carRating } from './factory';
 
 function runRace(seed, tweak) {
   const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
@@ -89,9 +90,13 @@ export function run() {
     const cal = CALENDAR[season.round];
     const track = raceTrackOf(cal);
     const engine = new SimulationEngine();
-    const quali = runQualifying({ teams: GRID_TEAMS, track, engine, playerTeamId: PLAYER_TEAM_ID, modes: {}, seed: 100 + season.round });
+    // the player buys a medium power unit upgrade whenever the factory has room
+    const buy = startProject(season, PLAYER_TEAM_ID, ['powerUnit', 'chassisWeight', 'aeroLowSpeed'][season.round % 3], 'medium');
+    if (buy.ok) season = buy.season;
+    const raceTeams = teamsWithCars(GRID_TEAMS, season.teams);
+    const quali = runQualifying({ teams: raceTeams, track, engine, playerTeamId: PLAYER_TEAM_ID, modes: {}, seed: 100 + season.round });
     ok(quali.length === 20 && quali[0].pos === 1, `${cal.id}: qualifying table broken`);
-    const race = createRace({ teams: GRID_TEAMS, track, engine, playerTeamId: PLAYER_TEAM_ID, seed: 200 + season.round, gridOrder: quali.map((q) => q.carId) });
+    const race = createRace({ teams: raceTeams, track, engine, playerTeamId: PLAYER_TEAM_ID, seed: 200 + season.round, gridOrder: quali.map((q) => q.carId) });
     ok(race.cars.find((c) => c.id === quali[0].carId).grid === 0, `${cal.id}: pole sitter not on pole`);
     race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true }));
     startRace(race);
@@ -105,7 +110,7 @@ export function run() {
     const outOfFuel = race.cars.filter((c) => c.dnf === 'Out of fuel').length;
     ok(outOfFuel === 0, `${cal.id}: ${outOfFuel} cars ran out of fuel on Standard mapping`);
     perTrack.push({ track: cal.id, winner: snap.rows[0].name, dnf: snap.rows.filter((r) => r.dnf).length, playerBest: Math.min(...snap.rows.filter((r) => r.isPlayer).map((r) => r.pos)) });
-    season = advance(recordRace(season, cal.id, snap.rows, race.fastest?.carId));
+    season = advance(recordRace(season, cal.id, snap.rows, race.fastest?.carId, GRID_TEAMS));
   }
   const tables = standings(season, GRID_TEAMS);
   const driverSum = tables.drivers.reduce((a, d) => a + d.points, 0);
@@ -113,7 +118,17 @@ export function run() {
   ok(driverSum === teamSum, `driver points ${driverSum} != team points ${teamSum}`);
   ok(season.results.length === CALENDAR.length, 'not every round was recorded');
   ok(tables.drivers.every((d, i) => i === 0 || d.points <= tables.drivers[i - 1].points), 'driver table not sorted');
-  stats.push({ season: perTrack, champion: tables.drivers[0].name, champPoints: tables.drivers[0].points, totalPoints: driverSum });
+  // finances and development
+  const budgets = Object.values(season.teams).map((t) => t.budget);
+  ok(budgets.every(Number.isFinite), 'a team budget is not a number');
+  const ratingStart = GRID_TEAMS.map((t) => carRating(t.car));
+  const ratingEnd = GRID_TEAMS.map((t) => carRating(season.teams[t.id].car));
+  const improved = ratingEnd.filter((r, i) => r > ratingStart[i]).length;
+  ok(improved >= 6, `only ${improved} teams improved their car over a season`);
+  ok(season.ledger.length >= CALENDAR.length * 4, `ledger has ${season.ledger.length} lines`);
+  ok(Object.values(season.teams).every((t) => Object.values(t.car).every((v) => v <= 0.995)), 'a car stat broke the ceiling');
+  stats.push({ season: perTrack, champion: tables.drivers[0].name, champPoints: tables.drivers[0].points, totalPoints: driverSum,
+    playerBudgetEnd: season.teams[PLAYER_TEAM_ID].budget, ratingGain: GRID_TEAMS.map((t, i) => `${t.short} ${(ratingEnd[i] - ratingStart[i]).toFixed(1)}`).join(', ') });
 
   return { pass: failures.length === 0, failures, stats };
 }

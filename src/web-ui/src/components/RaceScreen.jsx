@@ -14,7 +14,9 @@ const SNAPSHOT_MS = 200;
  * One race of the season. Owns the simulation loop; reports the final
  * snapshot through onFinished when the player continues from the result.
  */
-const RaceScreen = ({ teams, playerTeamId, track, gridOrder, roundLabel, speed, onSpeed, quality, onFinished }) => {
+const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, roundLabel, speed, onSpeed, quality, onFinished }) => {
+  // Cars are frozen for the race: upgrades bought mid-race arrive at the next round
+  const [teams] = useState(teamsAtStart);
   const [firstRace] = useState(() => createRace({
     teams, track, engine: new SimulationEngine(), playerTeamId, gridOrder,
   }));
