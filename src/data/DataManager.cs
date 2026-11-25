@@ -11,7 +11,7 @@ namespace F1Manager.Data
         public static GameData LoadGameData(string filePath)
         {
             string jsonString = File.ReadAllText(filePath);
-            return JsonSerializer.Deserialize<GameData>(jsonString);
+            return JsonSerializer.Deserialize<GameData>(jsonString, new JsonSerializerOptions { IncludeFields = true })!;
         }
     }
 

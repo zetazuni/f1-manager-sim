@@ -25,6 +25,9 @@ A realistic and fun Formula 1 Management Simulator.
 - **2026-10-09**: Implemented orthographic/isometric camera view with detailed procedural environment (grandstands, hillstands, paddock).
 - **2026-10-09**: Moved F1 car GLB model to `public/assets/` for browser loading.
 - **2026-10-09**: Enhanced CLI simulation with full race weekend simulation, strategy, and financial management.
+- **2026-11-15**: Race radio events on the dashboard.
+- **2026-11-25**: M1 layers and graphics recheck (Tailwind v4 actually loaded, CSS layers, z-index scale, rebuilt PlayCanvas scene, C# engine builds on .NET 8). Milestones now tracked in `docs/ROADMAP.md`.
+- **2026-11-25**: M2 full grid race (20 cars, race clock sim, overtakes, ERS battery, timing tower, results with points).
 
 ## Concept Details
 - **Team Management**: Recruitment of drivers and staff.
@@ -34,7 +37,7 @@ A realistic and fun Formula 1 Management Simulator.
 - **Physics Simulation**: Realistic lap time calculation based on granular stats, tire degradation, ERS, and fuel load.
 
 ## Files & Packages
-### Backend (.NET 7)
+### Backend (.NET 8)
 - `F1Manager.csproj` - .NET project file
 - `src/Program.cs` - CLI entry point with full race simulation
 - `src/data/Models.cs` - Data models for drivers, tracks, teams, cars
@@ -51,15 +54,23 @@ A realistic and fun Formula 1 Management Simulator.
 - `src/web-ui/src/services/FinancialManager.ts` - TS port of financial logic
 - `src/web-ui/src/data/mockData.ts` - Mock data for UI
 - `src/web-ui/src/components/Dashboard.jsx` - Management dashboard with live telemetry
-- `src/web-ui/src/components/RaceView.jsx` - 3D race visualization with:
-  - Orthographic/isometric camera
-  - Procedural track environment (grandstands, hillstands, paddock)
-  - GLB model loading for F1 car
-  - Environment lighting and materials
+- `src/web-ui/src/components/RaceView.jsx` - 3D race view (PlayCanvas): auto-fit isometric camera, scroll zoom, reads car positions from a ref every frame
+- `src/web-ui/src/game/trackPath.js` - circuit spline, distance lookup (`pointAt(lapFraction, lateral)`)
+- `src/web-ui/src/game/raceSim.js` - full-grid race simulation (pure logic) + `raceSim.test.js`
+- `src/web-ui/src/data/grid.js` - fictional 10-team grid, points table, race track
+- `src/web-ui/src/components/TimingTower.jsx` - live timing
+- `src/web-ui/src/game/scene.js` - track ribbon mesh, kerbs, buildings, trees, low-poly car
+- `tools/check-ui.mjs` - headless Edge check: `node tools/check-ui.mjs http://localhost:4317/ <outDir> tools/checks/m2-race.json` (sim test needs the dev server: `tools/checks/m2-sim.json`)
 - `src/web-ui/src/App.jsx` - Main UI application
+- `src/web-ui/src/index.css` - Tailwind v4 entry; theme tokens incl. z-index scale; all custom CSS inside layers
 - `src/web-ui/vite.config.js` - Vite configuration
 
 ## Environment Notes
 - Blender 5.2.2 LTS is connected but the MCP addon needs a manual refresh in Blender Preferences → Add-ons.
 - Unity is not required for this implementation.
 - All 3D rendering happens in-browser via PlayCanvas.
+
+## How to run
+- Web UI: `cd src/web-ui && npm install && npm run dev` (build: `npm run build`, preview: `npx vite preview`)
+- C# CLI: `dotnet run --project F1Manager.csproj` (.NET 8)
+- Roadmap and milestone status: `docs/ROADMAP.md`

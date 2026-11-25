@@ -1,1 +1,4 @@
 desktop.ini
+bin/
+obj/
+.claude/

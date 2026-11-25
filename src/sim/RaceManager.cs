@@ -14,13 +14,13 @@ namespace F1Manager.Sim
 
             foreach (var driver in drivers)
             {
-                var team = teams.FirstOrDefault(t => t.name == driver.name); // Simplified lookup
+                var team = teams.FirstOrDefault(t => t.lineup.Contains(driver));
                 if (team == null) continue;
 
                 float fuel = currentFuel[driver.name];
 
                 // Simplified simulation: static tire compound for now
-                float lapTime = _engine.CalculateLapTime(track, team, driver, currentLap, fuel, "medium", 0.1f);
+                float lapTime = _engine.CalculateLapTime(track, team, driver, currentLap, fuel, "medium", 0.1f, ERSMode.Neutral, FuelMode.Standard);
 
                 lapTimes[driver.name] = lapTime;
 

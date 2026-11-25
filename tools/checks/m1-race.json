@@ -1,0 +1,11 @@
+[
+  { "wait": 2500 },
+  { "eval": "JSON.stringify(window.__zetrace.carEntities.get('player').getPosition())" },
+  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent.includes('START')).click(), 'started'" },
+  { "wait": 2600 },
+  { "eval": "JSON.stringify({pos: window.__zetrace.carEntities.get('player').getPosition(), lap: document.querySelector('main p.text-3xl')?.textContent})" },
+  { "eval": "JSON.stringify({header: getComputedStyle(document.querySelector('header')).zIndex, hud: getComputedStyle(document.querySelector('.z-hud')).zIndex})" },
+  { "eval": "(() => { const c = document.querySelector('canvas'); for (let i = 0; i < 12; i++) c.dispatchEvent(new WheelEvent('wheel', {deltaY: -100, bubbles: true, cancelable: true})); return 'zoomed'; })()" },
+  { "wait": 1500 },
+  { "shot": "zoom.png" }
+]

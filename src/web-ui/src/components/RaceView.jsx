@@ -1,134 +1,159 @@
 import React, { useEffect, useRef } from 'react';
 import * as pc from 'playcanvas';
+import { makeTrackPath } from '../game/trackPath';
+import { buildCircuit, buildCar, clearMaterialCache } from '../game/scene';
 
-const RaceView = ({ lapProgress }) => {
+/**
+ * 3D race view.
+ * `carsRef.current` is read every frame: [{ id, color, accent, lapFloat, lane }]
+ * lapFloat = laps done + fraction of the current lap (2.25 = a quarter into lap 3).
+ * Reading a ref (not props) keeps the cars moving smoothly between React renders,
+ * and the PlayCanvas app is created once instead of on every prop change.
+ */
+const RaceView = ({ carsRef, focusId = null }) => {
   const canvasRef = useRef(null);
-  const carEntity = useRef(null);
+  const focusRef = useRef(focusId);
+  useEffect(() => {
+    focusRef.current = focusId;
+  }, [focusId]);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
 
-    // 1. Setup Application
-    const app = new pc.Application(canvasRef.current, {
-      mouse: new pc.Mouse(canvasRef.current),
-      touch: new pc.TouchDevice(canvasRef.current),
+    const app = new pc.Application(canvas, {
+      mouse: new pc.Mouse(canvas),
+      touch: new pc.TouchDevice(canvas),
+      graphicsDeviceOptions: { antialias: true },
     });
+    // CSS controls the canvas size; PlayCanvas matches its draw buffer to it.
+    app.setCanvasFillMode(pc.FILLMODE_NONE);
+    app.setCanvasResolution(pc.RESOLUTION_AUTO);
+    app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    app.scene.ambientLight = new pc.Color(0.38, 0.4, 0.46);
     app.start();
 
-    // 2. Setup Isometric Camera (Orthographic)
-    const camera = new pc.Entity();
+    const resize = () => app.resizeCanvas(canvas.clientWidth, canvas.clientHeight);
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+    resize();
+
+    // Isometric orthographic camera
+    const camera = new pc.Entity('camera');
     camera.addComponent('camera', {
       projection: pc.PROJECTION_ORTHOGRAPHIC,
-      orthoHeight: 40,
-      clearColor: new pc.Color(0.02, 0.02, 0.05) // Darker background
+      clearColor: new pc.Color(0.05, 0.07, 0.11),
+      nearClip: 1,
+      farClip: 600,
     });
-    camera.setPosition(60, 60, 60);
-    camera.lookAt(0, 0, 0);
     app.root.addChild(camera);
 
-    // 3. Lighting
-    const ambient = new pc.Entity();
-    ambient.addComponent('light', { type: 'ambient', intensity: 0.3, color: new pc.Color(0.2, 0.2, 0.4) });
-    app.root.addChild(ambient);
-    const sun = new pc.Entity();
-    sun.addComponent('light', { type: 'directional', intensity: 1.2, color: new pc.Color(1, 1, 0.9), shadow: true });
-    sun.setEulerAngles(-45, 45, 0);
+    // Sun with real shadows
+    const sun = new pc.Entity('sun');
+    sun.addComponent('light', {
+      type: 'directional',
+      color: new pc.Color(1, 0.97, 0.9),
+      intensity: 1.4,
+      castShadows: true,
+      shadowDistance: 260,
+      shadowResolution: 2048,
+      shadowBias: 0.2,
+      normalOffsetBias: 0.05,
+    });
+    sun.setEulerAngles(50, 30, 0);
     app.root.addChild(sun);
 
-    // 4. Ground & Track Surface
-    const ground = new pc.Entity();
-    ground.addComponent('model', { type: 'plane' });
-    ground.setLocalScale(200, 1, 200);
-    ground.setPosition(0, -0.1, 0);
-    const groundMat = new pc.StandardMaterial();
-    groundMat.diffuse = new pc.Color(0.05, 0.1, 0.05);
-    ground.model.material = groundMat;
-    app.root.addChild(ground);
+    const path = makeTrackPath();
+    buildCircuit(app, path);
 
-    // Add a Grid surface for better "Game" feel
-    const grid = new pc.Entity();
-    grid.addComponent('model', { type: 'plane' });
-    grid.setLocalScale(100, 1, 100);
-    grid.setPosition(0, 0, 0);
-    const gridMat = new pc.StandardMaterial();
-    gridMat.diffuse = new pc.Color(0.1, 0.1, 0.15);
-    gridMat.emissive = new pc.Color(0.1, 0.1, 0.2);
-    gridMat.opacity = 0.5;
-    gridMat.blendType = pc.BLEND_NORMAL;
-    grid.model.material = gridMat;
-    app.root.addChild(grid);
-
-    // 5. Procedural Track Circle
-    const createTrackSegment = (x, z, size) => {
-        const seg = new pc.Entity();
-        seg.addComponent('model', { type: 'box' });
-        seg.setLocalScale(size, 0.1, size);
-        seg.setLocalPosition(x, 0.05, z);
-        const mat = new pc.StandardMaterial();
-        mat.diffuse = new pc.Color(0.2, 0.2, 0.2); // Asphalt
-        seg.model.material = mat;
-        app.root.addChild(seg);
+    // Auto-fit: project the track into the camera's view plane and size the
+    // orthographic view so the whole circuit fits the canvas, whatever its shape.
+    const fwd = new pc.Vec3(-1, -1, -1).normalize();
+    const right = new pc.Vec3().cross(fwd, pc.Vec3.UP).normalize();
+    const up = new pc.Vec3().cross(right, fwd).normalize();
+    let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+    path.points.forEach((p) => {
+      for (const [ox, oz] of [[p.nx * 6, p.nz * 6], [-p.nx * 6, -p.nz * 6]]) {
+        const v = new pc.Vec3(p.x + ox, 0, p.z + oz);
+        minX = Math.min(minX, v.dot(right)); maxX = Math.max(maxX, v.dot(right));
+        minY = Math.min(minY, v.dot(up)); maxY = Math.max(maxY, v.dot(up));
+      }
+    });
+    const fitCenter = new pc.Vec3()
+      .add(right.clone().mulScalar((minX + maxX) / 2))
+      .add(up.clone().mulScalar((minY + maxY) / 2));
+    const fitHeight = () => {
+      const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
+      return Math.max((maxY - minY) / 2, (maxX - minX) / 2 / aspect) * 1.08;
     };
 
-    // Draw a basic circular track path
-    for(let i=0; i<32; i++) {
-        const angle = (i/32) * Math.PI * 2;
-        createTrackSegment(Math.cos(angle) * 20, Math.sin(angle) * 20, 4);
-    }
-
-    // 6. Environment
-    const addBlock = (x, y, z, w, h, d, color) => {
-      const entity = new pc.Entity();
-      entity.setLocalPosition(x, y, z);
-      entity.setLocalScale(w, h, d);
-      entity.addComponent('model', { type: 'box' });
-      const mat = new pc.StandardMaterial();
-      mat.diffuse = color;
-      entity.model.material = mat;
-      app.root.addChild(entity);
+    // Car entities are created per id on first sight and removed when the id disappears
+    const carEntities = new Map();
+    let zoom = 1; // 1 = whole circuit, smaller = closer
+    const onWheel = (e) => {
+      e.preventDefault();
+      zoom = Math.min(1.4, Math.max(0.2, zoom * (e.deltaY > 0 ? 1.1 : 0.9)));
     };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    camera.camera.orthoHeight = fitHeight();
 
-    // Grandstand
-    addBlock(-35, 3, 0, 10, 6, 40, new pc.Color(0.5, 0.5, 0.5));
-    // Pit Building
-    addBlock(0, 2, -30, 40, 4, 10, new pc.Color(0.7, 0.1, 0.1));
-
-    // 7. F1 Car Model
-    const carContainer = new pc.Entity();
-    app.root.addChild(carContainer);
-    carEntity.current = carContainer;
-
-    app.assets.loadFromUrl('/assets/f1_car.glb', 'carModel', (err, asset) => {
-        if (!err && asset.resource) {
-            const renderEntity = asset.resource.instantiateRenderEntity();
-            renderEntity.setLocalScale(0.01, 0.01, 0.01);
-            carContainer.addChild(renderEntity);
-        } else {
-            const box = new pc.Entity();
-            box.addComponent('model', { type: 'box' });
-            box.setLocalScale(1.5, 0.5, 3);
-            const mat = new pc.StandardMaterial();
-            mat.diffuse = new pc.Color(1, 0, 0);
-            box.model.material = mat;
-            carContainer.addChild(box);
+    const look = new pc.Vec3();
+    app.on('update', (dt) => {
+      const cars = carsRef?.current || [];
+      const seen = new Set();
+      cars.forEach((c) => {
+        seen.add(c.id);
+        let ent = carEntities.get(c.id);
+        if (!ent) {
+          ent = buildCar(app, c.color, c.accent);
+          carEntities.set(c.id, ent);
         }
+        // ease toward the wanted lane so cars swing out smoothly instead of jumping
+        const lane = ent.lane === undefined ? (c.lane || 0) : ent.lane + ((c.lane || 0) - ent.lane) * Math.min(1, dt * 4);
+        ent.lane = lane;
+        const p = path.pointAt(c.lapFloat, lane);
+        ent.setLocalPosition(p.x, 0.05, p.z);
+        ent.setLocalEulerAngles(0, p.heading, 0);
+      });
+      carEntities.forEach((ent, id) => {
+        if (!seen.has(id)) {
+          ent.destroy();
+          carEntities.delete(id);
+        }
+      });
+
+      // Smooth zoom; when zoomed in, the camera slides toward the focused car
+      const cam = camera.camera;
+      const wanted = fitHeight() * zoom;
+      cam.orthoHeight += (wanted - cam.orthoHeight) * Math.min(1, dt * 8);
+      const follow = Math.max(0, Math.min(1, (1 - cam.orthoHeight / fitHeight()) / 0.6));
+      const focus = focusRef.current ? carEntities.get(focusRef.current) : null;
+      look.copy(fitCenter);
+      if (focus) look.lerp(fitCenter, focus.getPosition(), follow);
+      camera.setPosition(look.x + 110, look.y + 110, look.z + 110);
+      camera.lookAt(look);
     });
 
-    return () => app.destroy();
-  }, []);
+    // Test hook (read-only): lets the headless check confirm the scene is alive
+    window.__zetrace = { app, carEntities };
 
-  useEffect(() => {
-    if (carEntity.current) {
-        const radius = 20;
-        const angle = lapProgress * Math.PI * 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        carEntity.current.setLocalPosition(x, 0.5, z);
-        carEntity.current.setEulerAngles(0, -lapProgress * 360 - 90, 0);
-    }
-  }, [lapProgress]);
+    return () => {
+      canvas.removeEventListener('wheel', onWheel);
+      ro.disconnect();
+      app.destroy();
+      clearMaterialCache();
+      if (window.__zetrace?.app === app) delete window.__zetrace;
+    };
+  }, [carsRef]);
 
-  return <canvas ref={canvasRef} className="w-full h-[600px] bg-black rounded-lg shadow-inner" />;
+  return (
+    <div className="relative">
+      <canvas ref={canvasRef} className="h-[420px] w-full rounded-lg bg-black shadow-inner lg:h-[600px]" />
+      <p className="pointer-events-none absolute bottom-2 right-3 z-hud text-[10px] uppercase tracking-widest text-slate-400/80">
+        Scroll to zoom
+      </p>
+    </div>
+  );
 };
 
 export default RaceView;
