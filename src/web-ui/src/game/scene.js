@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas';
-import { PIT_LANE, pitBoxFrac } from './raceSim';
-import { MeshBuilder, vertexColorMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
+import { pitLayout } from './trackPath';
+import { MeshBuilder, vertexColorMaterial, glowMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
+import { buildEnvironment, ENVIRONMENTS } from './environments';
 
 export const TRACK_WIDTH = 7;
 
@@ -26,8 +27,9 @@ export function material(color, { emissive = null, gloss = 0.35, metalness = 0, 
   matCache.set(key, m);
   return m;
 }
+// Called after app.destroy(): the device has already released GPU resources,
+// so only drop the references (destroying here would touch a dead device).
 export const clearMaterialCache = () => {
-  matCache.forEach((m) => m.destroy());
   matCache.clear();
   clearVertexColorMaterials();
 };
@@ -118,18 +120,20 @@ function meshEntity(parent, mesh, mat, name) {
   return e;
 }
 
-export function buildCircuit(app, path, { teams = [] } = {}) {
+export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 } = {}) {
+  const theme = ENVIRONMENTS[env] || ENVIRONMENTS.forest;
   const device = app.graphicsDevice;
   const root = new pc.Entity('circuit');
   app.root.addChild(root);
   const half = TRACK_WIDTH / 2;
   // all static boxes are collected here and baked into a single mesh at the end
   const mb = new MeshBuilder();
+  const glow = new MeshBuilder();
 
   // Grass and run-off
-  box(root, { pos: [0, -0.5, 0], scale: [420, 1, 420], color: '#1d4d2b', shadows: false });
+  box(root, { pos: [0, -0.5, 0], scale: [900, 1, 900], color: theme.ground, shadows: false });
   // Ribbon materials are two-sided so the triangle winding never hides a strip
-  meshEntity(root, ribbon(device, path, -half - 3, half + 3, 0.01), material('#6b6b5e', { gloss: 0.1, twoSided: true }), 'runoff');
+  meshEntity(root, ribbon(device, path, -half - 3, half + 3, 0.01), material(theme.runoff, { gloss: 0.1, twoSided: true }), 'runoff');
 
   // Asphalt and white edge lines
   meshEntity(root, ribbon(device, path, -half, half, 0.03), material('#2b2f36', { gloss: 0.25, twoSided: true }), 'asphalt');
@@ -170,8 +174,11 @@ export function buildCircuit(app, path, { teams = [] } = {}) {
   box(finish, { pos: [0, 5, 0], scale: [TRACK_WIDTH + 3.5, 0.8, 0.6], color: '#e10600' });
 
   // Pit lane alongside the main straight, with entry and exit ramps
-  const ramp = 0.035;
-  const lat = PIT_LANE.lateral;
+  const pit = pitLayout(path.total);
+  const PIT_LANE = pit;
+  const pitBoxFrac = pit.boxFrac;
+  const { ramp } = pit;
+  const lat = pit.lateral;
   const smooth = (t) => t * t * (3 - 2 * t);
   const centreAt = (f) => {
     if (f < PIT_LANE.start) return lat * smooth(Math.max(0, (f - (PIT_LANE.start - ramp)) / ramp));
@@ -192,72 +199,37 @@ export function buildCircuit(app, path, { teams = [] } = {}) {
   }
 
   // Garages: one per team, in team colours, behind each team's pit box
-  const garageLen = 0.015 * path.total;
+  const { garageLen } = pit;
   const slots = Math.max(teams.length, 10);
   for (let i = 0; i < slots; i++) {
     const team = teams[i];
     const f = pitBoxFrac(i);
     const p = path.pointAt(f, lat - 5.2);
     const g = { mb, group: { pos: [p.x, 0, p.z], rot: [0, p.heading, 0] } };
-    // local axes: +Z along the track, +X towards the track (lateral is negative here)
-    box(g, { pos: [0, 2, -0.4], scale: [6, 4, garageLen * 0.96], color: '#d7dbe2' });
-    box(g, { pos: [2.95, 1.4, 0], scale: [0.2, 2.8, garageLen * 0.78], color: '#0b0f19', shadows: false });
-    box(g, { pos: [3.05, 3.4, 0], scale: [0.15, 0.7, garageLen * 0.9], color: team ? team.color : '#475569', shadows: false });
-    box(g, { pos: [3.9, 0.04, 0], scale: [1.6, 0.04, garageLen * 0.7], color: team ? team.accent : '#64748b', shadows: false });
+    // local axes after the yaw: +Z along the track, -X points towards the track
+    // on the pit (negative lateral) side, so the door and apron sit at -X
+    box(g, { pos: [0, 2, 0], scale: [6, 4, garageLen * 0.96], color: '#d7dbe2' });
+    box(g, { pos: [-3.0, 1.4, 0], scale: [0.2, 2.8, garageLen * 0.78], color: '#0b0f19' });
+    box(g, { pos: [-3.08, 3.4, 0], scale: [0.15, 0.7, garageLen * 0.9], color: team ? team.color : '#475569' });
+    box(g, { pos: [-3.9, 0.04, 0], scale: [1.6, 0.04, garageLen * 0.7], color: team ? team.accent : '#64748b' });
   }
   // One long roof over the garage row
-  const r0 = path.pointAt(pitBoxFrac(0) - 0.012, lat - 5.6);
-  const r1 = path.pointAt(pitBoxFrac(slots - 1) + 0.012, lat - 5.6);
+  const r0 = path.pointAt(pitBoxFrac(0) - garageLen / 2 / path.total, lat - 5.6);
+  const r1 = path.pointAt(pitBoxFrac(slots - 1) + garageLen / 2 / path.total, lat - 5.6);
   const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
   const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
-  // Stepped grandstand inside the infield, facing the straight
-  for (let step = 0; step < 5; step++) {
-    box(mb, {
-      pos: [0, 0.6 + step * 0.9, -9 + step * 1.3],
-      scale: [44, 1.2, 1.4],
-      color: step % 2 ? '#3b5bdb' : '#4c6ef5',
-    });
-  }
-  box(mb, { pos: [0, 6.2, -5.5], scale: [46, 0.3, 6], color: '#e5e7eb' });
-
-  // A few trees around the outside for scale
-  const rng = mulberry32(7);
-  for (let i = 0; i < 60; i++) {
-    const x = rng() * 170 - 85;
-    const z = rng() * 130 - 65;
-    if (nearTrack(path, x, z, half + 8)) continue;
-    if (Math.abs(z + 33) < 8 && Math.abs(x) < 32) continue;
-    if (z > -14 && z < 0 && Math.abs(x) < 26) continue;
-    const s = 1 + rng() * 1.2;
-    mb.prism({ pos: [x, s, z], radius: 0.25, height: s * 2, sides: 6, color: '#5b3a1e' });
-    box(mb, { pos: [x, s * 2 + 0.8, z], scale: [2.6 * s, 2.2 * s, 2.6 * s], color: '#2f7d32', rot: [0, rng() * 90, 0] });
-  }
+  // Grandstands, walls, trees, buildings, water, lights: depends on the circuit
+  buildEnvironment(mb, glow, path, env, seed);
 
   const staticMesh = mb.build(device);
   if (staticMesh) root.addChild(meshToEntity(staticMesh, vertexColorMaterial(false), { name: 'static-scenery' }));
+  const glowMesh = glow.build(device);
+  if (glowMesh) root.addChild(meshToEntity(glowMesh, glowMaterial(), { name: 'glow', castShadows: false, receiveShadows: false }));
   return root;
 }
 
-function nearTrack(path, x, z, dist) {
-  const d2 = dist * dist;
-  for (const p of path.points) {
-    const dx = p.x - x;
-    const dz = p.z - z;
-    if (dx * dx + dz * dz < d2) return true;
-  }
-  return false;
-}
 
-function mulberry32(seed) {
-  let a = seed;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Low-poly F1 car, about 5 units long, nose pointing +Z, baked into ONE mesh.

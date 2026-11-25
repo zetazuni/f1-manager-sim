@@ -4,11 +4,12 @@
  *
  *   node tools/check-ui.mjs <url> <outDir> [steps.json] [--size=1400x1000]
  *
- * steps.json is a list of { "wait": ms } | { "eval": "js" } | { "shot": "name.png" }.
+ * steps.json is a list of { "wait": ms } | { "waitFor": "css selector", "timeout": ms } |
+ * { "eval": "js" } | { "shot": "name.png" }.
  * Without a steps file: wait 4 s, take shot.png, print the scene probe.
  * Prints every console error and uncaught exception; exits 1 if there were any.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -40,6 +41,27 @@ const browser = spawn(exe, [
 ], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Always take the whole browser tree down (GPU and renderer children too),
+// also on Ctrl-C, on an outer timeout, and after our own hard limit.
+let killed = false;
+function killBrowser() {
+  if (killed) return;
+  killed = true;
+  if (process.platform === 'win32') {
+    // Edge re-parents its real processes away from the launcher PID, so kill
+    // every msedge.exe whose command line names this run's unique profile.
+    const tag = path.basename(profile);
+    spawnSync('powershell', ['-NoProfile', '-Command',
+      `Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe'" | Where-Object { $_.CommandLine -like '*${tag}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`,
+    ], { stdio: 'ignore' });
+  } else browser.kill('SIGKILL');
+  try { fs.rmSync(profile, { recursive: true, force: true }); } catch { /* profile still locked */ }
+}
+process.on('exit', killBrowser);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) process.on(sig, () => { killBrowser(); process.exit(130); });
+const hardLimit = Number((args.find((a) => a.startsWith('--limit=')) || '--limit=240000').slice(8));
+setTimeout(() => { console.error(`hard limit ${hardLimit} ms reached`); killBrowser(); process.exit(3); }, hardLimit).unref();
+
 let wsUrl;
 for (let i = 0; i < 50 && !wsUrl; i++) {
   try {
@@ -48,7 +70,7 @@ for (let i = 0; i < 50 && !wsUrl; i++) {
   } catch { /* browser still starting */ }
   if (!wsUrl) await sleep(200);
 }
-if (!wsUrl) { console.error('browser did not start'); browser.kill(); process.exit(2); }
+if (!wsUrl) { console.error('browser did not start'); process.exit(2); }
 
 const ws = new WebSocket(wsUrl);
 await new Promise((r) => ws.addEventListener('open', r, { once: true }));
@@ -74,6 +96,16 @@ await send('Page.navigate', { url });
 
 for (const step of steps) {
   if (step.wait) await sleep(step.wait);
+  if (step.waitFor) {
+    const limit = Date.now() + (step.timeout || 20000);
+    let found = false;
+    while (!found && Date.now() < limit) {
+      const res = await send('Runtime.evaluate', { expression: `!!document.querySelector(${JSON.stringify(step.waitFor)})`, returnByValue: true });
+      found = res.result?.result?.value === true;
+      if (!found) await sleep(200);
+    }
+    if (!found) errors.push(`waitFor timed out: ${step.waitFor}`);
+  }
   if (step.eval) {
     const res = await send('Runtime.evaluate', { expression: step.eval, awaitPromise: true, returnByValue: true });
     const r = res.result;
@@ -88,6 +120,6 @@ for (const step of steps) {
 }
 
 ws.close();
-browser.kill();
+killBrowser();
 if (errors.length) { console.log(`ERRORS (${errors.length}):\n${errors.join('\n')}`); process.exit(1); }
 console.log('no console errors');

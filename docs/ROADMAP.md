@@ -37,13 +37,20 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - 3D: pit lane with entry and exit ramps, pit wall, team-coloured garages; cars drive in, stop at their own garage and rejoin.
 - Graphics performance: static scenery and every car are now merged vertex-colour meshes (`src/game/meshBuilder.js`): 1071 draw calls down to 53. Race speed no longer depends on frame rate.
 
-## M4 Race weekend and season (NEXT)
+## M4 Race weekend, season and new look (DONE, 2026-11-26)
 
-- Several circuits (different spline layouts in `src/game/trackPath.js`).
-- Qualifying sets the grid.
-- Championship standings for drivers and teams across a calendar.
+- Calendar of 6 fictional circuits (`src/data/calendar.js`), each with its own layout, laps, tyre wear, fuel use, pit loss and environment. `tools/validate-tracks.mjs` checks every layout (no crossings, 16+ units clearance, straight pit section, garages clear of the track).
+- Pit lane now defined in track units (`pitLayout()` in `trackPath.js`), so it fits any circuit.
+- Weekend flow: preview (track card, Safe or Push qualifying per driver) -> qualifying (one flying lap; Push gains about 0.25 s, risks a deleted lap) -> race -> results -> next round; season finale with champions.
+- `src/game/season.js`: qualifying, points (+1 fastest lap in the top 10), driver and team championships with tie-breaks, plain JSON state ready for saving.
+- Screens: Race weekend, Standings, Calendar (mini track maps from the real spline). The race keeps running while you browse other tabs.
+- New "pit wall" theme: carbon panels, Zetrace red, cyan data colour, Bahnschrift condensed headings, shared `btn`/`chip`/`tab`/`panel-title` classes in `index.css`.
+- 3D environments (`src/game/environments.js`): forest, desert, city street circuit with walls, coast with sea and boats, night race with floodlights and lit windows, alpine with snowy mountains. Grandstands with crowds and sponsor boards everywhere. Light, ambient, sky and fog per circuit.
+- Fixes: garage doors faced away from the track; canvas size stuck at 0 after a hidden tab; sim clock now a timer independent of frame rate; material cleanup after the device was destroyed blocked the results screen.
+- `tools/check-ui.mjs`: `waitFor` steps, hard time limit, and it now kills the whole headless browser tree (369 orphaned browsers had piled up).
+- Tests: full 6-round season in `raceSim.test.js`; `tools/checks/m4-weekend.json` drives a whole weekend in the real app.
 
-## M5 Factory and finances (LATER)
+## M5 Factory and finances (NEXT)
 
 - `FactoryView` upgrades spend budget and change car stats (aero, power unit, ERS, weight, reliability).
 - Sponsors, prize money by position, driver salaries between races.

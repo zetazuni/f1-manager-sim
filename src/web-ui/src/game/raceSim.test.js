@@ -5,6 +5,8 @@ import SimulationEngine from '../services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from '../data/grid';
 import { mockTracks } from '../data/mockData';
 import { createRace, startRace, step, snapshot, lapFloat, setStrategy, FUEL, ERS } from './raceSim';
+import { CALENDAR } from '../data/calendar';
+import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
 
 function runRace(seed, tweak) {
   const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
@@ -79,6 +81,39 @@ export function run() {
   const attack = runRace(11, (race) => race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { ersMode: ERS.Overtake, fuelMode: FUEL.Lean })));
   const avgPos = (r) => r.snap.rows.filter((x) => x.isPlayer).reduce((a, x) => a + x.pos, 0) / 2;
   stats.push({ neutralAvgPos: avgPos(neutral), overtakeLeanAvgPos: avgPos(attack) });
+
+  // A full season on every calendar circuit, engineer running the player's cars
+  let season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: PLAYER_TEAM_ID, seed: 5 });
+  const perTrack = [];
+  while (season.phase !== 'done') {
+    const cal = CALENDAR[season.round];
+    const track = raceTrackOf(cal);
+    const engine = new SimulationEngine();
+    const quali = runQualifying({ teams: GRID_TEAMS, track, engine, playerTeamId: PLAYER_TEAM_ID, modes: {}, seed: 100 + season.round });
+    ok(quali.length === 20 && quali[0].pos === 1, `${cal.id}: qualifying table broken`);
+    const race = createRace({ teams: GRID_TEAMS, track, engine, playerTeamId: PLAYER_TEAM_ID, seed: 200 + season.round, gridOrder: quali.map((q) => q.carId) });
+    ok(race.cars.find((c) => c.id === quali[0].carId).grid === 0, `${cal.id}: pole sitter not on pole`);
+    race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true }));
+    startRace(race);
+    let guard = 0;
+    while (!race.over && guard++ < 200000) step(race, 0.5);
+    ok(race.over, `${cal.id}: race never ended`);
+    const snap = snapshot(race);
+    ok(snap.rows[0].lapsDone === cal.laps, `${cal.id}: winner did ${snap.rows[0].lapsDone}/${cal.laps} laps`);
+    const best = Math.min(...race.cars.filter((c) => c.bestLap).map((c) => c.bestLap));
+    ok(best > cal.baseLapTime - 4 && best < cal.baseLapTime + 6, `${cal.id}: best lap ${best.toFixed(2)} vs base ${cal.baseLapTime}`);
+    const outOfFuel = race.cars.filter((c) => c.dnf === 'Out of fuel').length;
+    ok(outOfFuel === 0, `${cal.id}: ${outOfFuel} cars ran out of fuel on Standard mapping`);
+    perTrack.push({ track: cal.id, winner: snap.rows[0].name, dnf: snap.rows.filter((r) => r.dnf).length, playerBest: Math.min(...snap.rows.filter((r) => r.isPlayer).map((r) => r.pos)) });
+    season = advance(recordRace(season, cal.id, snap.rows, race.fastest?.carId));
+  }
+  const tables = standings(season, GRID_TEAMS);
+  const driverSum = tables.drivers.reduce((a, d) => a + d.points, 0);
+  const teamSum = tables.teams.reduce((a, t) => a + t.points, 0);
+  ok(driverSum === teamSum, `driver points ${driverSum} != team points ${teamSum}`);
+  ok(season.results.length === CALENDAR.length, 'not every round was recorded');
+  ok(tables.drivers.every((d, i) => i === 0 || d.points <= tables.drivers[i - 1].points), 'driver table not sorted');
+  stats.push({ season: perTrack, champion: tables.drivers[0].name, champPoints: tables.drivers[0].points, totalPoints: driverSum });
 
   return { pass: failures.length === 0, failures, stats };
 }

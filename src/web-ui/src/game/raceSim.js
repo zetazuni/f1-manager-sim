@@ -9,6 +9,7 @@
 
 import { POINTS } from '../data/grid';
 import { COMPOUNDS, wearPerLap, tyreDelta } from './tyres';
+import { makeTrackPath, pitLayout } from './trackPath';
 
 export const ERS = { Neutral: 'Neutral', Attack: 'Attack', Overtake: 'Overtake' };
 export const FUEL = { Lean: 'Lean', Standard: 'Standard', Rich: 'Rich' };
@@ -18,8 +19,6 @@ const GRID_SLOT_LAP = 0.006; // lap fraction between grid slots (shown in 3D)
 const GRID_SLOT_TIME = 0.25; // s: lap-1 time lost per grid slot
 // Battery change per lap (0-100). A flat battery means Neutral pace.
 const BATTERY_PER_LAP = { Neutral: 12, Attack: -9, Overtake: -28 };
-// Pit lane: runs alongside the main straight between these lap fractions
-export const PIT_LANE = { start: 0.02, end: 0.2, lateral: -9 };
 const TWO_COMPOUND_PENALTY = 10; // s added at the finish if only one compound was used
 
 /** Small seeded RNG so a race can be replayed in tests. */
@@ -47,7 +46,7 @@ export function formatLap(t) {
  * @param {string} o.playerTeamId
  * @param {number} [o.seed]
  */
-export function createRace({ teams, track, engine, playerTeamId, seed }) {
+export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder = null }) {
   const rng = makeRng(seed);
   const cars = [];
   teams.forEach((team) => {
@@ -97,6 +96,11 @@ export function createRace({ teams, track, engine, playerTeamId, seed }) {
   }));
   quali.sort((a, b) => a.t - b.t);
   quali.forEach(({ c }, i) => { c.grid = i; });
+  // A real qualifying session (season.js) decides the grid when given
+  if (gridOrder) {
+    const at = new Map(gridOrder.map((id, i) => [id, i]));
+    cars.forEach((c) => { c.grid = at.has(c.id) ? at.get(c.id) : cars.length; });
+  }
   cars.sort((a, b) => a.grid - b.grid);
 
   // AI starting tyres and how hard each AI pushes a set before pitting
@@ -108,8 +112,11 @@ export function createRace({ teams, track, engine, playerTeamId, seed }) {
     }
   });
 
+  const path = makeTrackPath(track.points);
   const race = {
     track, engine, rng, cars,
+    trackLength: path.total,
+    pit: pitLayout(path.total),
     time: 0,
     started: false,
     leaderFinished: false,
@@ -385,9 +392,6 @@ function retire(race, c, reason, lapNo) {
   log(race, lapNo, 'danger', `${c.driver.name} retires: ${reason}.`, [c.id]);
 }
 
-/** Where a team's pit box is, as a lap fraction inside the pit lane. */
-export const pitBoxFrac = (teamIndex) => PIT_LANE.start + 0.025 + teamIndex * 0.015;
-
 /**
  * 3D pose: { lapFloat, inPit }. lapFloat = laps done + fraction of the lap.
  * On a pit lap the first part of the lap is spent in the pit lane: drive to
@@ -399,15 +403,16 @@ export function carPose(race, c) {
   const t = Math.max(0, race.time - c.lapStart);
   if (c.pitThisLap && c.lapsDone > 0) {
     const { loss, stop } = c.pitThisLap;
-    const box = pitBoxFrac(c.teamIndex);
+    const { pit } = race;
+    const box = pit.boxFrac(c.teamIndex);
     const pitTime = loss + stop;
     const drive = loss / 2;
     let frac;
     if (t < drive) frac = (t / drive) * box;
     else if (t < drive + stop) frac = box;
-    else if (t < pitTime) frac = box + ((t - drive - stop) / drive) * (PIT_LANE.end - box);
-    else frac = PIT_LANE.end + Math.min(0.9999 - PIT_LANE.end, ((t - pitTime) / (c.lapTime - pitTime)) * (1 - PIT_LANE.end));
-    return { lapFloat: c.lapsDone + frac, inPit: frac > PIT_LANE.start * 0.5 && frac < PIT_LANE.end };
+    else if (t < pitTime) frac = box + ((t - drive - stop) / drive) * (pit.end - box);
+    else frac = pit.end + Math.min(0.9999 - pit.end, ((t - pitTime) / (c.lapTime - pitTime)) * (1 - pit.end));
+    return { lapFloat: c.lapsDone + frac, inPit: frac > pit.start * 0.5 && frac < pit.end };
   }
   const frac = Math.min(0.9999, t / c.lapTime);
   if (c.lapsDone === 0) return { lapFloat: -c.grid * GRID_SLOT_LAP + frac * (1 + c.grid * GRID_SLOT_LAP), inPit: false };
