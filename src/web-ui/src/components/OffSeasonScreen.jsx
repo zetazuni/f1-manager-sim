@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { driverRating, salaryAsk, marketList } from '../game/career';
+import MoraleMeter from './MoraleMeter';
 
 const Stars = ({ potential }) => {
   // scouting is not exact: show potential as stars rounded to halves
@@ -67,6 +68,7 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
                   <p className="font-mono text-sm">{driverRating(d)} <span className="text-muted">ovr</span></p>
                 </div>
                 <p className="text-xs text-muted">Age {d.age} | <Stars potential={d.potential} /> | ${(d.salary / 1e6).toFixed(1)}M a year</p>
+                <p className="mt-1"><MoraleMeter value={d.morale} /></p>
                 <p className={`mt-1 text-xs ${expired ? 'text-amber-300' : 'text-slate-400'}`}>
                   {expired ? 'Contract ended: re-sign or the driver leaves' : `Contract: ${d.contract.years} more year${d.contract.years > 1 ? 's' : ''}`}
                 </p>
@@ -112,7 +114,10 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
                     <tr key={d.id} className="border-t border-line">
                       <td className="py-2">
                         <p className="font-bold">{d.name}</p>
-                        <p className="text-[11px] text-muted">{d.contract ? `Leaving ${teamName(d.contract.teamId)}` : 'Free agent'}</p>
+                        <p className="flex items-center gap-2 text-[11px] text-muted">
+                          {d.contract ? `Leaving ${teamName(d.contract.teamId)}` : 'Free agent'}
+                          <MoraleMeter value={d.morale} compact />
+                        </p>
                       </td>
                       <td className="py-2 text-right font-mono">{d.age}</td>
                       <td className="py-2 text-right font-mono">{driverRating(d)}</td>

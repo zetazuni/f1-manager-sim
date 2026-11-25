@@ -6,7 +6,7 @@
 
 import { FREE_AGENTS, GRID_PROFILES } from '../data/freeAgents';
 import { makeRng } from './raceSim';
-import { teamsWithCars } from './factory';
+import { teamsWithCars, carRating } from './factory';
 
 export const FIRST_YEAR = 2027;
 export const VACANT = {
@@ -36,13 +36,13 @@ export function createCareer(teams) {
     lineups[t.id] = t.drivers.map((d, i) => {
       const id = slug(d.name);
       const [age, potential] = GRID_PROFILES[d.code] || [27, 88];
-      drivers[id] = { ...d, id, age, potential, contract: { teamId: t.id, years: 1 + ((i + t.id.length) % 3) } };
+      drivers[id] = { ...d, id, age, potential, morale: 70, contract: { teamId: t.id, years: 1 + ((i + t.id.length) % 3) } };
       return id;
     });
   });
   FREE_AGENTS.forEach((d) => {
     const id = slug(d.name);
-    drivers[id] = { ...d, id, contract: null };
+    drivers[id] = { ...d, id, morale: 65, contract: null };
   });
   return { year: FIRST_YEAR, drivers, lineups, history: [] };
 }
@@ -57,6 +57,67 @@ export function teamsForSeason(teams, season) {
     // as a placeholder until the off-season fills it
     drivers: season.career.lineups[t.id].map((id) => (id ? season.career.drivers[id] : VACANT)),
   }));
+}
+
+/** Morale words and colours for the UI. */
+export const moraleLabel = (m) => (m >= 82 ? 'Great' : m >= 66 ? 'Good' : m >= 45 ? 'Okay' : 'Low');
+
+/**
+ * Morale (0-100) changes the driver for the race: up to +-5 consistency and
+ * +-1 pace around a neutral 60.
+ */
+export function withMorale(driver) {
+  const m = driver.morale ?? 65;
+  const k = (m - 60) / 40; // -1.5 .. +1
+  return {
+    ...driver,
+    consistency: Math.max(40, Math.min(99, Math.round(driver.consistency + k * 5))),
+    pace: Math.max(40, Math.min(99, +(driver.pace + k * 1).toFixed(1))),
+  };
+}
+
+/**
+ * After a race: morale follows the result against what the car should
+ * achieve, points, crashes, and team orders; then drifts back toward 65.
+ * rows: race snapshot rows; swaps: [{ yielded: carId, gained: carId }].
+ */
+export function updateMorale(season, teams, rows, swaps = []) {
+  const career = season.career;
+  if (!career) return [];
+  const ranks = teams
+    .map((t) => ({ id: t.id, r: carRating(season.teams[t.id].car) }))
+    .sort((a, b) => b.r - a.r)
+    .map((x) => x.id);
+  const changes = [];
+  const driverOf = (carId) => {
+    const cut = carId.lastIndexOf('-');
+    const id = career.lineups[carId.slice(0, cut)]?.[Number(carId.slice(cut + 1))];
+    return id ? career.drivers[id] : null;
+  };
+  rows.forEach((r) => {
+    const d = driverOf(r.id);
+    if (!d) return;
+    const teamId = r.id.slice(0, r.id.lastIndexOf('-'));
+    const expected = (ranks.indexOf(teamId) + 1) * 2 - 0.5;
+    let delta = 0;
+    if (r.dnf === 'Crashed') delta -= 5;
+    else if (r.dnf) delta -= 1; // not their fault
+    else {
+      delta += Math.max(-7, Math.min(7, (expected - r.pos) * 1.1));
+      if (r.pos <= 10) delta += 2;
+      if (r.pos === 1) delta += 4;
+    }
+    swaps.forEach((s) => {
+      if (s.yielded === r.id) delta -= 7;
+      if (s.gained === r.id) delta += 2;
+    });
+    const before = d.morale ?? 65;
+    let m = before + delta;
+    m += (65 - m) * 0.1; // drift toward neutral
+    d.morale = Math.round(Math.max(5, Math.min(100, m)));
+    changes.push({ carId: r.id, name: d.name, before, after: d.morale });
+  });
+  return changes;
 }
 
 /** Drivers the player can sign: free agents and drivers whose contract ends. */
@@ -144,6 +205,7 @@ export function signDriver(season, playerTeamId, driverId, seat, years, teamPos)
   career.lineups[playerTeamId][seat] = driverId;
   d.contract = { teamId: playerTeamId, years };
   d.salary = Math.round(ask * M);
+  d.morale = Math.min(100, (d.morale ?? 65) + 6); // a new deal lifts spirits
   next.teams[playerTeamId].budget = +(next.teams[playerTeamId].budget - sigining).toFixed(2);
   next.ledger.push({ round: 0, label: `Signed ${d.name} (${years} yr, bonus)`, amount: -sigining });
   return { ok: true, season: next };
