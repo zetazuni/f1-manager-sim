@@ -33,6 +33,7 @@ npm run build      # production build in dist/
 
 ```bash
 node tools/validate-tracks.mjs        # every circuit layout is valid
+node tools/run-checks.mjs             # everything: tracks + every UI flow (dev server on port 5317)
 # with the dev server running (npm run dev -- --port 5317):
 node tools/check-ui.mjs "http://localhost:5317/?notitle=1" out tools/checks/m2-sim.json   # simulation, season and career tests
 node tools/check-ui.mjs "http://localhost:5317/" out tools/checks/m10-title.json         # title, practice, team orders
