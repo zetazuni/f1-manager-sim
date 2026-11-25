@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import SimulationEngine from '../services/SimulationEngine';
-import { mockTeams, mockTracks, mockDrivers } from '../data/mockData';
 import { ERSMode, FuelMode } from '../types';
 import { playClickSound } from '../services/AudioManager';
 
@@ -31,7 +30,7 @@ const Dashboard = ({ team, track, driver, gameState, setGameState }) => {
     }`;
 
   return (
-    <div className="bg-slate-800/80 p-8 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-sm">
+    <div className="panel p-8">
       <div className="flex justify-between items-end mb-8">
         <div>
           <h2 className="text-sm text-slate-400 uppercase tracking-widest mb-1">{track.name} GP</h2>

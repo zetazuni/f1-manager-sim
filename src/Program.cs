@@ -25,7 +25,7 @@ namespace F1Manager
                 if (System.IO.File.Exists(dataPath))
                 {
                     var jsonData = System.IO.File.ReadAllText(dataPath);
-                    var gameData = System.Text.Json.JsonSerializer.Deserialize<DataManager.GameData>(jsonData);
+                    var gameData = System.Text.Json.JsonSerializer.Deserialize<GameData>(jsonData, new System.Text.Json.JsonSerializerOptions { IncludeFields = true });
                     if (gameData != null)
                     {
                         drivers = gameData.drivers;
@@ -39,8 +39,8 @@ namespace F1Manager
                 Console.WriteLine($"Could not load JSON data: {ex.Message}. Using default data.");
             }
 
-            // Default data if JSON loading failed
-            if (drivers.Count == 0)
+            // Default data if JSON loading failed or has fewer drivers than the 3 teams below need
+            if (drivers.Count < 3)
             {
                 drivers = new List<Driver>
                 {
@@ -160,7 +160,7 @@ namespace F1Manager
             var finance = new FinancialManager(redBull.budget);
             finance.ProcessSponsorship(15000000f); // Initial sponsorship
 
-            Console.WriteLine($"Initial Budget: ${finance.GetBudget():N0}");
+            Console.WriteLine($"Initial Budget: ${finance.CurrentBudget:N0}");
 
             // 2. Advanced Simulation
             var simulation = new SimulationEngine();
@@ -262,19 +262,19 @@ namespace F1Manager
 
             Console.WriteLine("-----------------------------------------");
             Console.WriteLine("Race Complete!");
-            Console.WriteLine(f"Final Budget: ${finance.GetBudget():N0}");
+            Console.WriteLine($"Final Budget: ${finance.CurrentBudget:N0}");
 
             // Final financial update
             foreach (var team in teams)
             {
                 var totalSalary = team.lineup.Sum(d => d.salary);
-                if (finance.GetBudget() >= totalSalary)
+                if (finance.CurrentBudget >= totalSalary)
                 {
                     finance.PaySalaries(team.lineup);
                 }
             }
 
-            Console.WriteLine(f"Final Budget after salaries: ${finance.GetBudget():N0}");
+            Console.WriteLine($"Final Budget after salaries: ${finance.CurrentBudget:N0}");
             Console.WriteLine("Simulation ended.");
         }
 
