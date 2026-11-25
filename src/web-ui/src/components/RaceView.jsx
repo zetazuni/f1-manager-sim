@@ -108,7 +108,10 @@ const RaceView = ({ carsRef, focusId = null }) => {
           ent = buildCar(app, c.color, c.accent);
           carEntities.set(c.id, ent);
         }
-        const p = path.pointAt(c.lapFloat, c.lane || 0);
+        // ease toward the wanted lane so cars swing out smoothly instead of jumping
+        const lane = ent.lane === undefined ? (c.lane || 0) : ent.lane + ((c.lane || 0) - ent.lane) * Math.min(1, dt * 4);
+        ent.lane = lane;
+        const p = path.pointAt(c.lapFloat, lane);
         ent.setLocalPosition(p.x, 0.05, p.z);
         ent.setLocalEulerAngles(0, p.heading, 0);
       });

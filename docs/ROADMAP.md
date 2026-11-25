@@ -16,17 +16,20 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - C# engine: never compiled (duplicate compile items, Python `f"..."` strings, API mismatches, JSON fields not bound, wrong team lookup) and targeted .NET 7 which is not installed. Now builds on .NET 8 and runs a full race.
 - `tools/check-ui.mjs`: headless Edge check over CDP (screenshots, console errors, scripted steps).
 
-## M2 Full grid race (IN PROGRESS)
+## M2 Full grid race (DONE, 2026-11-25)
 
-- 10 teams, 20 cars. The player manages one team (2 drivers); the other 9 are AI.
-- One race clock drives everything: each car has its own lap times, so gaps and positions come from the model, not from animation.
-- Live timing tower: position, driver, gap to leader, last lap, tyre wear; player cars highlighted.
-- All 20 cars on the 3D track, spread across the track width when close together.
-- Strategy controls (ERS, fuel mode) per player driver.
-- Race speed control (pause, 1x, 2x, 4x).
-- Finish classification with points in the summary modal.
+- 10 fictional teams, 20 cars (`src/data/grid.js`). The player runs Zetrace Racing (2 drivers); the other 9 teams are AI.
+- `src/game/raceSim.js`: one race clock; each car has its own lap times from `SimulationEngine`. Overtakes are rolled at the start of each lap (overtaking vs defending skill, ERS, pace gap); a failed roll keeps the car in dirty air 0.3 to 0.7 s behind. Passes then play out visibly in 3D during the lap.
+- Grid from a quick one-lap qualifying; lap-1 grid slot offsets.
+- ERS battery: Neutral +12 per lap, Attack -9, Overtake -28; a flat battery means Neutral pace. AI uses Attack when charged.
+- Fuel: Rich all race runs the car dry (DNF "Out of fuel"); fuel-to-finish readout and radio warning. Small reliability DNF chance.
+- Finish rules: leader takes the flag after full distance, everyone else at their next crossing.
+- UI: player panel with per-driver ERS/fuel, race speed 1x/2x/4x, live timing tower (gap, last lap, fastest lap, grid +/-; click to follow a car), radio feed of real race events, result modal with points and New race.
+- Tests: `src/game/raceSim.test.js` (5 seeded races + fuel and ERS balance checks), `tools/checks/m2-race.json` (full race in the real app).
 
 ## M3 Tyres and pit stops (NEXT)
+
+- Tyre wear is tracked (Overtake wears 30% faster) but barely affects pace yet: make it matter here.
 
 - Soft / Medium / Hard compounds with different pace and wear.
 - Pit button per player driver with compound choice; pit lane time loss.

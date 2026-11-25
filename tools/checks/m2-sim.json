@@ -1,0 +1,4 @@
+[
+  { "wait": 2500 },
+  { "eval": "import('/src/game/raceSim.test.js').then(m => JSON.stringify(m.run(), null, 1))" }
+]

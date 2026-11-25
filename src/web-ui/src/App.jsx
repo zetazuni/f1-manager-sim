@@ -1,88 +1,86 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Dashboard from './components/Dashboard';
 import RaceView from './components/RaceView';
+import TimingTower from './components/TimingTower';
 import RaceSummaryModal from './components/RaceSummaryModal';
-import { mockTeams, mockTracks, mockDrivers } from './data/mockData';
 import SimulationEngine from './services/SimulationEngine';
-import { ERSMode, FuelMode } from './types';
+import { GRID_TEAMS, PLAYER_TEAM_ID, RACE_TRACK } from './data/grid';
+import { createRace, step, snapshot, lapFloat, setStrategy } from './game/raceSim';
 
-const LAP_MS = 1000; // one simulated lap per real second
+// Race seconds per real second at "1x": one ~72 s lap in about 1.2 s.
+const BASE_SPEED = 60;
+const SNAPSHOT_MS = 200;
+
+const newRace = () => createRace({
+  teams: GRID_TEAMS, track: RACE_TRACK, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID,
+});
 
 function App() {
-  const [team] = useState(mockTeams[0]);
-  const [track] = useState(mockTracks[0]);
-  const [driver] = useState(mockDrivers[0]);
-  const [sim] = useState(() => new SimulationEngine());
-  const [summaryClosed, setSummaryClosed] = useState(false);
-
-  const [gameState, setGameState] = useState({
-    lap: 0,
-    fuel: 100,
-    tireWear: 0,
-    ersMode: ERSMode.Neutral,
-    fuelMode: FuelMode.Standard,
-    lapTimes: [],
-    isRacing: false,
-  });
-
-  // Simulation loop
-  useEffect(() => {
-    let interval = 0;
-    if (gameState.isRacing && gameState.lap < track.totalLaps) {
-      interval = window.setInterval(() => {
-        setGameState((prev) => {
-          const nextLap = prev.lap + 1;
-          const lapTime = sim.calculateLapTime(
-            track, team, driver, nextLap, prev.fuel, 'Medium', prev.tireWear, prev.ersMode, prev.fuelMode,
-          );
-          const fuelCons = sim.calculateFuelConsumption(track, prev.fuelMode);
-          const isFinished = nextLap >= track.totalLaps;
-
-          const minutes = Math.floor(lapTime / 60);
-          const seconds = (lapTime % 60).toFixed(3);
-          const lapStr = `${minutes}:${seconds.padStart(6, '0')}`;
-
-          return {
-            ...prev,
-            lap: nextLap,
-            fuel: Math.max(0, prev.fuel - fuelCons),
-            tireWear: Math.min(1, prev.tireWear + 0.02),
-            lapTimes: [...prev.lapTimes, lapStr],
-            isRacing: !isFinished,
-          };
-        });
-      }, LAP_MS);
-    }
-    return () => window.clearInterval(interval);
-  }, [gameState.isRacing, gameState.lap, sim, team, track, driver]);
-
-  // The summary is derived from state: open once the last lap is done, until closed
-  const showSummary = gameState.lap >= track.totalLaps && !summaryClosed;
-
-  // Smooth car position for the 3D view: lap count + time since the last lap tick
+  const [firstRace] = useState(newRace);
+  const raceRef = useRef(firstRace);
   const carsRef = useRef([]);
-  const lapClock = useRef({ lap: 0, at: 0, frac: 0 });
-  useEffect(() => {
-    lapClock.current = { lap: gameState.lap, at: performance.now(), frac: 0 };
-  }, [gameState.lap]);
-  useEffect(() => {
-    // pausing freezes the car where it is; resuming continues from there
-    const c = lapClock.current;
-    if (!gameState.isRacing) c.frac = Math.min(0.999, (performance.now() - c.at) / LAP_MS) * (c.at ? 1 : 0);
-    else c.at = performance.now() - c.frac * LAP_MS;
-  }, [gameState.isRacing]);
+  const [snap, setSnap] = useState(() => snapshot(firstRace));
+  const [running, setRunning] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [summaryClosed, setSummaryClosed] = useState(false);
+  const [focusId, setFocusId] = useState(`${PLAYER_TEAM_ID}-0`);
+
+  // One loop: step the sim, feed the 3D view every frame, refresh React a few times a second
   useEffect(() => {
     let raf = 0;
-    const tick = () => {
-      const c = lapClock.current;
-      const running = gameState.isRacing && c.lap < track.totalLaps;
-      const frac = running ? Math.min(0.999, (performance.now() - c.at) / LAP_MS) : c.frac;
-      carsRef.current = [{ id: 'player', color: '#1e3a8a', accent: '#e10600', lapFloat: c.lap + frac, lane: 0 }];
+    let last = performance.now();
+    let lastSnap = 0;
+    const tick = (now) => {
+      const race = raceRef.current;
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      if (running && !race.over) step(race, dt * BASE_SPEED * speed);
+
+      // spread cars across the track when they run close together
+      const byDistance = race.cars
+        .map((c) => ({ c, lf: lapFloat(race, c) }))
+        .sort((a, b) => b.lf - a.lf);
+      let prevLf = Infinity;
+      let prevLane = 0;
+      carsRef.current = byDistance.map(({ c, lf }) => {
+        let lane = 0;
+        if (c.dnf) lane = 6;
+        else if (prevLf - lf < 0.012) lane = prevLane === 0 ? (c.grid % 2 ? 1.6 : -1.6) : 0;
+        if (!c.dnf) { prevLf = lf; prevLane = lane; }
+        return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane };
+      });
+
+      if (now - lastSnap > SNAPSHOT_MS) {
+        lastSnap = now;
+        setSnap(snapshot(race));
+        if (race.over) setRunning(false);
+      }
       raf = requestAnimationFrame(tick);
     };
-    tick();
+    raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [gameState.isRacing, track.totalLaps]);
+  }, [running, speed]);
+
+  const toggleRun = useCallback(() => {
+    const race = raceRef.current;
+    race.started = true;
+    setRunning((r) => !r && !race.over);
+  }, []);
+
+  const changeStrategy = useCallback((carId, change) => {
+    setStrategy(raceRef.current, carId, change);
+    setSnap(snapshot(raceRef.current));
+  }, []);
+
+  const restart = useCallback(() => {
+    raceRef.current = newRace();
+    setSnap(snapshot(raceRef.current));
+    setRunning(false);
+    setSummaryClosed(false);
+  }, []);
+
+  const playerTeam = GRID_TEAMS.find((t) => t.id === PLAYER_TEAM_ID);
+  const showSummary = snap.over && !summaryClosed;
 
   return (
     <div className="min-h-screen font-sans text-white">
@@ -92,19 +90,36 @@ function App() {
         </h1>
       </header>
 
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-8 p-4 lg:grid-cols-2">
-        <Dashboard team={team} track={track} driver={driver} gameState={gameState} setGameState={setGameState} />
+      <main className="mx-auto grid max-w-[1800px] grid-cols-1 gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,0.9fr)]">
+        <Dashboard
+          team={playerTeam}
+          track={RACE_TRACK}
+          snap={snap}
+          running={running}
+          speed={speed}
+          onToggleRun={toggleRun}
+          onSpeed={setSpeed}
+          onStrategy={changeStrategy}
+          onRestart={restart}
+          focusId={focusId}
+          onFocus={setFocusId}
+        />
         <section className="panel overflow-hidden p-4">
-          <h2 className="mb-4 text-xl font-bold">Race Track</h2>
-          <RaceView carsRef={carsRef} focusId="player" />
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-xl font-bold">{RACE_TRACK.name}</h2>
+            <p className="label">Click a driver in the tower to follow them</p>
+          </div>
+          <RaceView carsRef={carsRef} focusId={focusId} />
         </section>
+        <TimingTower snap={snap} focusId={focusId} onFocus={setFocusId} />
       </main>
 
       <RaceSummaryModal
         isOpen={showSummary}
         onClose={() => setSummaryClosed(true)}
-        finalTimes={gameState.lapTimes}
-        totalBudget={team.budget}
+        onRestart={restart}
+        snap={snap}
+        trackName={RACE_TRACK.name}
       />
     </div>
   );

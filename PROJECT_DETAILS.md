@@ -27,6 +27,7 @@ A realistic and fun Formula 1 Management Simulator.
 - **2026-10-09**: Enhanced CLI simulation with full race weekend simulation, strategy, and financial management.
 - **2026-11-15**: Race radio events on the dashboard.
 - **2026-11-25**: M1 layers and graphics recheck (Tailwind v4 actually loaded, CSS layers, z-index scale, rebuilt PlayCanvas scene, C# engine builds on .NET 8). Milestones now tracked in `docs/ROADMAP.md`.
+- **2026-11-25**: M2 full grid race (20 cars, race clock sim, overtakes, ERS battery, timing tower, results with points).
 
 ## Concept Details
 - **Team Management**: Recruitment of drivers and staff.
@@ -55,8 +56,11 @@ A realistic and fun Formula 1 Management Simulator.
 - `src/web-ui/src/components/Dashboard.jsx` - Management dashboard with live telemetry
 - `src/web-ui/src/components/RaceView.jsx` - 3D race view (PlayCanvas): auto-fit isometric camera, scroll zoom, reads car positions from a ref every frame
 - `src/web-ui/src/game/trackPath.js` - circuit spline, distance lookup (`pointAt(lapFraction, lateral)`)
+- `src/web-ui/src/game/raceSim.js` - full-grid race simulation (pure logic) + `raceSim.test.js`
+- `src/web-ui/src/data/grid.js` - fictional 10-team grid, points table, race track
+- `src/web-ui/src/components/TimingTower.jsx` - live timing
 - `src/web-ui/src/game/scene.js` - track ribbon mesh, kerbs, buildings, trees, low-poly car
-- `tools/check-ui.mjs` - headless Edge check: `node tools/check-ui.mjs http://localhost:4317/ <outDir> tools/checks/m1-race.json`
+- `tools/check-ui.mjs` - headless Edge check: `node tools/check-ui.mjs http://localhost:4317/ <outDir> tools/checks/m2-race.json` (sim test needs the dev server: `tools/checks/m2-sim.json`)
 - `src/web-ui/src/App.jsx` - Main UI application
 - `src/web-ui/src/index.css` - Tailwind v4 entry; theme tokens incl. z-index scale; all custom CSS inside layers
 - `src/web-ui/vite.config.js` - Vite configuration

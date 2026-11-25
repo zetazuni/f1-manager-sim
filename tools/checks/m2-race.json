@@ -1,0 +1,13 @@
+[
+  { "wait": 2500 },
+  { "shot": "m2-grid.png" },
+  { "eval": "JSON.stringify({cars: window.__zetrace.carEntities.size, rows: document.querySelectorAll('[data-testid=tower] tbody tr').length, cards: document.querySelectorAll('[data-testid=driver-card]').length})" },
+  { "eval": "document.querySelector('[data-testid=run]').click(), document.querySelector('[data-speed=\"4\"]').click(), 'running at 4x'" },
+  { "wait": 6000 },
+  { "shot": "m2-mid.png" },
+  { "eval": "JSON.stringify({lap: document.querySelector('[data-testid=lap]').textContent, top3: [...document.querySelectorAll('[data-testid=tower] tbody tr')].slice(0,3).map(r => r.innerText.split(String.fromCharCode(10)).join(' '))})" },
+  { "eval": "new Promise(r => { const t0 = Date.now(); const i = setInterval(() => { if (document.querySelector('[data-testid=classification]') || Date.now() - t0 > 60000) { clearInterval(i); r(document.querySelector('[data-testid=lap]').textContent); } }, 250); })" },
+  { "wait": 500 },
+  { "shot": "m2-result.png" },
+  { "eval": "JSON.stringify({topLayerAtHeader: document.elementFromPoint(700, 30).closest('[role=dialog]') ? 'modal' : document.elementFromPoint(700, 30).tagName, results: document.querySelectorAll('[data-testid=classification] tr').length})" }
+]
