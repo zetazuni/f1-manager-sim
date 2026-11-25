@@ -9,14 +9,14 @@
 
 import { POINTS } from '../data/grid';
 import { COMPOUNDS, wearPerLap, tyreDelta, bestFamily, familyOf, conditionDelta } from './tyres';
-import { makeTrackPath, pitLayout } from './trackPath';
+import { makeTrackPath, pitLayout, makeTimeProfile } from './trackPath';
 
 export const ERS = { Neutral: 'Neutral', Attack: 'Attack', Overtake: 'Overtake' };
 export const FUEL = { Lean: 'Lean', Standard: 'Standard', Rich: 'Rich' };
 
 const DIRTY_AIR_GAP = 0.3; // s: the closest a car can follow without passing
-const GRID_SLOT_LAP = 0.006; // lap fraction between grid slots (shown in 3D)
-const GRID_SLOT_TIME = 0.25; // s: lap-1 time lost per grid slot
+export const GRID_SLOT_UNITS = 4.4; // track units between grid slots (staggered left/right)
+const GRID_SLOT_TIME = 0.35; // s: lap-1 time lost per grid slot
 // Battery change per lap (0-100). A flat battery means Neutral pace.
 const BATTERY_PER_LAP = { Neutral: 12, Attack: -9, Overtake: -28 };
 const TWO_COMPOUND_PENALTY = 10; // s added at the finish if only one compound was used
@@ -80,6 +80,7 @@ export function formatLap(t) {
  */
 export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder = null }) {
   const rng = makeRng(seed);
+  engine.random = rng; // lap time variance from the same seed: a race replays exactly
   const cars = [];
   teams.forEach((team) => {
     team.drivers.forEach((driver, i) => {
@@ -151,6 +152,7 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
     sc: null, // { endLap } while the safety car is out
     scCount: 0,
     trackLength: path.total,
+    toDistance: makeTimeProfile(path), // time fraction -> distance fraction (corner speed)
     pit: pitLayout(path.total),
     time: 0,
     started: false,
@@ -534,12 +536,36 @@ export function carPose(race, c) {
     if (t < drive) frac = (t / drive) * box;
     else if (t < drive + stop) frac = box;
     else if (t < pitTime) frac = box + ((t - drive - stop) / drive) * (pit.end - box);
-    else frac = pit.end + Math.min(0.9999 - pit.end, ((t - pitTime) / (c.lapTime - pitTime)) * (1 - pit.end));
+    else {
+      // after the pit exit: shape the rest of the lap like a normal one
+      const u = Math.min(0.9999, (t - pitTime) / (c.lapTime - pitTime));
+      const startTau = race.toDistance ? inverseShape(race, pit.end) : pit.end;
+      const d = race.toDistance ? race.toDistance(startTau + u * (1 - startTau)) : pit.end + u * (1 - pit.end);
+      frac = Math.max(pit.end, Math.min(0.9999, d));
+    }
     return { lapFloat: c.lapsDone + frac, inPit: frac > pit.start * 0.5 && frac < pit.end };
   }
-  const frac = Math.min(0.9999, t / c.lapTime);
-  if (c.lapsDone === 0) return { lapFloat: -c.grid * GRID_SLOT_LAP + frac * (1 + c.grid * GRID_SLOT_LAP), inPit: false };
+  const tau = Math.min(0.9999, t / c.lapTime);
+  const frac = race.toDistance ? Math.min(0.9999, race.toDistance(tau)) : tau;
+  if (c.lapsDone === 0) {
+    const slot = (c.grid * GRID_SLOT_UNITS) / race.trackLength;
+    return { lapFloat: -slot + frac * (1 + slot), inPit: false, gridLane: c.grid % 2 ? 1.7 : -1.7 };
+  }
   return { lapFloat: c.lapsDone + frac, inPit: false };
+}
+
+/** Time fraction at which a normal lap reaches distance fraction `d` (cached per race). */
+function inverseShape(race, d) {
+  race.inverseCache = race.inverseCache || new Map();
+  if (race.inverseCache.has(d)) return race.inverseCache.get(d);
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (race.toDistance(mid) < d) lo = mid; else hi = mid;
+  }
+  race.inverseCache.set(d, lo);
+  return lo;
 }
 
 /** Where the safety car is (just ahead of the leader), or null when it is in. */

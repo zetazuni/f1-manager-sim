@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as pc from 'playcanvas';
 import { makeTrackPath } from '../game/trackPath';
 import { buildCircuit, buildCar, buildSafetyCar, buildRain, clearMaterialCache, clearCarMeshCache } from '../game/scene';
@@ -19,6 +19,11 @@ const col = (hex, k = 1) => {
  */
 const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], track = null, quality = 'high' }) => {
   const canvasRef = useRef(null);
+  const [cameraMode, setCameraMode] = useState('overview');
+  const modeRef = useRef('overview');
+  useEffect(() => {
+    modeRef.current = cameraMode;
+  }, [cameraMode]);
   const focusRef = useRef(focusId);
   useEffect(() => {
     focusRef.current = focusId;
@@ -68,6 +73,8 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     const camera = new pc.Entity('camera');
     camera.addComponent('camera', {
       projection: pc.PROJECTION_ORTHOGRAPHIC,
+      toneMapping: pc.TONEMAP_ACES,
+      gammaCorrection: pc.GAMMA_SRGB,
       clearColor: col(theme.sky),
       nearClip: 1,
       farClip: 600,
@@ -154,6 +161,18 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     camera.camera.orthoHeight = fitHeight();
 
     const look = new pc.Vec3();
+    // chase / TV camera state
+    let lastMode = 'overview';
+    const camPos = new pc.Vec3();
+    const camAim = new pc.Vec3();
+    const want = new pc.Vec3();
+    const aim = new pc.Vec3();
+    let tvActive = null;
+    // eight trackside camera towers, on the outside of the lap
+    const tvCams = Array.from({ length: 8 }, (_, i) => {
+      const p = path.pointAt(i / 8 + 0.06, -16);
+      return { x: p.x, y: 7, z: p.z };
+    });
     app.on('update', (dt) => {
       const cars = carsRef?.current || [];
       const seen = new Set();
@@ -180,16 +199,59 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
 
       applyWeather(weatherRef?.current || 0, dt);
 
-      // Smooth zoom; when zoomed in, the camera slides toward the focused car
       const cam = camera.camera;
-      const wanted = fitHeight() * zoom;
-      cam.orthoHeight += (wanted - cam.orthoHeight) * Math.min(1, dt * 8);
-      const follow = Math.max(0, Math.min(1, (1 - cam.orthoHeight / fitHeight()) / 0.6));
       const focus = focusRef.current ? carEntities.get(focusRef.current) : null;
-      look.copy(fitCenter);
-      if (focus) look.lerp(fitCenter, focus.getPosition(), follow);
-      camera.setPosition(look.x + 110, look.y + 110, look.z + 110);
-      camera.lookAt(look);
+      const mode = focus ? modeRef.current : 'overview';
+      if (mode !== lastMode) {
+        lastMode = mode;
+        if (mode === 'overview') {
+          cam.projection = pc.PROJECTION_ORTHOGRAPHIC;
+          cam.nearClip = 1;
+        } else {
+          cam.projection = pc.PROJECTION_PERSPECTIVE;
+          cam.nearClip = 0.3;
+        }
+      }
+
+      if (mode === 'overview') {
+        // Smooth zoom; when zoomed in, the camera slides toward the focused car
+        const wanted = fitHeight() * zoom;
+        cam.orthoHeight += (wanted - cam.orthoHeight) * Math.min(1, dt * 8);
+        const follow = Math.max(0, Math.min(1, (1 - cam.orthoHeight / fitHeight()) / 0.6));
+        look.copy(fitCenter);
+        if (focus) look.lerp(fitCenter, focus.getPosition(), follow);
+        camera.setPosition(look.x + 110, look.y + 110, look.z + 110);
+        camera.lookAt(look);
+        return;
+      }
+
+      const carPos = focus.getPosition();
+      const nose = focus.forward.clone().mulScalar(-1); // models point +Z, PlayCanvas forward is -Z
+      if (mode === 'chase') {
+        cam.fov = 48;
+        want.copy(carPos).sub(nose.clone().mulScalar(11)).add(new pc.Vec3(0, 4.2, 0));
+        aim.copy(carPos).add(nose.clone().mulScalar(9)).add(new pc.Vec3(0, 0.8, 0));
+        // Rigid follow: cars move ~230 units per real second at 1x, so any
+        // positional smoothing would leave the camera far behind the car.
+        camPos.copy(want);
+        camAim.copy(aim);
+        camera.setPosition(camPos);
+        camera.lookAt(camAim);
+        return;
+      }
+
+      // TV: fixed trackside cameras, cut to the one nearest the focused car
+      let best = tvCams[0];
+      let bestD = Infinity;
+      tvCams.forEach((c) => {
+        const d = (c.x - carPos.x) ** 2 + (c.z - carPos.z) ** 2;
+        if (d < bestD) { bestD = d; best = c; }
+      });
+      if (best !== tvActive) tvActive = best;
+      cam.fov = Math.max(12, Math.min(40, 900 / Math.sqrt(bestD + 1)));
+      camAim.copy(carPos);
+      camera.setPosition(best.x, best.y, best.z);
+      camera.lookAt(camAim);
     });
 
     // Test hook (read-only): lets the headless check confirm the scene is alive
@@ -208,8 +270,21 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
   return (
     <div className="relative">
       <canvas ref={canvasRef} className="h-[420px] w-full rounded-lg bg-black shadow-inner lg:h-[600px]" />
+      <div className="absolute left-2 top-2 z-hud flex gap-1 rounded-lg bg-ink/75 p-1 backdrop-blur" role="group" aria-label="Camera">
+        {[['overview', 'Overview'], ['chase', 'Chase'], ['tv', 'TV']].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            data-camera={id}
+            onClick={() => setCameraMode(id)}
+            className={`chip px-2.5 py-1 text-[11px] ${cameraMode === id ? 'bg-f1-red text-white' : 'chip-off'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <p className="pointer-events-none absolute bottom-2 right-3 z-hud text-[10px] uppercase tracking-widest text-slate-400/80">
-        Scroll to zoom
+        {cameraMode === 'overview' ? 'Scroll to zoom' : 'Following the selected driver'}
       </p>
     </div>
   );

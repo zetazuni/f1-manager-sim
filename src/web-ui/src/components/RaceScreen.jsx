@@ -4,6 +4,7 @@ import RaceView from './RaceView';
 import TimingTower from './TimingTower';
 import RaceSummaryModal from './RaceSummaryModal';
 import StartLights from './StartLights';
+import MiniMap from './MiniMap';
 import { playLightBeep, playLightsOut } from '../services/AudioManager';
 import SimulationEngine from '../services/SimulationEngine';
 import { createRace, startRace, step, snapshot, carPose, setStrategy, safetyCarPose, wetnessAt, order } from '../game/raceSim';
@@ -67,18 +68,20 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
       const byDistance = race.cars
         .map((c) => {
           const pose = carPose(race, c);
-          return { c, lf: pose.lapFloat, inPit: pose.inPit };
+          return { c, lf: pose.lapFloat, inPit: pose.inPit, gridLane: pose.gridLane };
         })
         .sort((a, b) => b.lf - a.lf);
       let prevLf = Infinity;
       let prevLane = 0;
-      carsRef.current = byDistance.map(({ c, lf, inPit }) => {
+      carsRef.current = byDistance.map(({ c, lf, inPit, gridLane }) => {
         let lane = 0;
-        if (inPit) return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane: race.pit.lateral };
+        // on the grid and through the first metres: staggered grid lanes
+        if (gridLane !== undefined && lf < 0.02) return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane: gridLane, isPlayer: c.isPlayer };
+        if (inPit) return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane: race.pit.lateral, isPlayer: c.isPlayer };
         if (c.dnf) lane = 6;
         else if (prevLf - lf < 0.012) lane = prevLane === 0 ? (c.grid % 2 ? 1.6 : -1.6) : 0;
         if (!c.dnf) { prevLf = lf; prevLane = lane; }
-        return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane };
+        return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane, isPlayer: c.isPlayer };
       });
       const sc = safetyCarPose(race);
       if (sc) carsRef.current.push({ id: 'safety-car', lapFloat: sc.lapFloat, lane: 0 });
@@ -149,7 +152,10 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
             <h2 className="panel-title">{roundLabel} | {track.name}</h2>
             <p className="label hidden sm:block">Scroll to zoom | click a driver to follow</p>
           </div>
-          <RaceView carsRef={carsRef} weatherRef={weatherRef} focusId={focusId} teams={teams} track={track} quality={quality} />
+          <div className="relative">
+            <RaceView carsRef={carsRef} weatherRef={weatherRef} focusId={focusId} teams={teams} track={track} quality={quality} />
+            <MiniMap carsRef={carsRef} points={track.points} focusId={focusId} />
+          </div>
         </section>
         <TimingTower snap={snap} focusId={focusId} onFocus={setFocusId} />
       </div>

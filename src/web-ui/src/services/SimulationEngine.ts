@@ -7,6 +7,8 @@ export interface RaceEvent {
 }
 
 class SimulationEngine {
+  /** Random source; a race sets its seeded generator here so a seed replays exactly. */
+  random: () => number = Math.random;
   private readonly FUEL_PENALTY_PER_KG = 0.033;
   private readonly MAX_CAR_DELTA = 3.0;
   private readonly MAX_DRIVER_DELTA = 1.5;
@@ -52,14 +54,14 @@ class SimulationEngine {
 
     // Randomness based on consistency
     const maxVariance = 0.3 * (1 - driver.consistency / 100);
-    const variance = (Math.random() * maxVariance * 2 - maxVariance);
+    const variance = (this.random() * maxVariance * 2 - maxVariance);
     lapTime += variance;
 
     return lapTime;
   }
 
   generateRandomEvent(lap: number, driverName: string, consistency: number): RaceEvent | null {
-    const roll = Math.random() * 100;
+    const roll = this.random() * 100;
 
     // Lower consistency = higher chance of events
     const eventChance = 5 + (1 - consistency / 100) * 10;
@@ -75,7 +77,7 @@ class SimulationEngine {
       { message: `Box this lap, ${driverName}. Confirm.`, type: 'info' }
     ];
 
-    const event = events[Math.floor(Math.random() * events.length)];
+    const event = events[Math.floor(this.random() * events.length)];
     return {
       lap,
       message: event.message!,
