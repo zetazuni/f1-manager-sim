@@ -79,7 +79,17 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - UI: safety car banner and SC badge in the tower, weather strip (conditions, wetness, radar forecast), Box for Inter / Wet buttons, rain chance on the track card. Radio warnings for rain and wrong tyres.
 - Tests: forced-rain races (every car must switch to wet tyres when it is properly wet), safety car bunching check; `tools/checks/m7-weather.json` (`?rain=1` test hook).
 
-## M8 Driver market and contracts (NEXT)
+## M8 Driver market and multi-season careers (DONE, 2026-11-26)
 
-- Driver contracts with lengths and salaries; offers at the end of a season; AI teams sign drivers too.
-- Multi-season careers: new season keeps cars (with a regulation reset), budgets and contracts.
+- `src/game/career.js`: driver registry (grid drivers plus 8 fictional free agents in `src/data/freeAgents.js`) with age, potential and contracts; lineups per team. Seats stay as car ids inside a season, so in-season code did not change.
+- Season finale -> off-season: constructors prize money (P1 $18M down to $3.6M), ageing (young drivers grow toward potential, 33+ decline, 37+ may retire), contracts run down.
+- Driver market: re-sign expiring drivers or sign free agents and drivers leaving other teams. Salary ask grows with rating and is higher for weaker teams; signing bonus is half a year, paid now. Contract length 1 to 3 years.
+- AI teams keep or replace drivers, best teams first; empty player seats get the cheapest available driver.
+- Regulation reset: car gaps shrink by 40 %, projects cleared, new season funding. Year advances (2027, 2028, ...).
+- Tests: two-season career test (ageing, signing, no empty or double seats, points reset, field closes up, new signing races); `tools/checks/m8-market.json` plays the finale and the market in the real app.
+
+## Ideas for later
+
+- Practice sessions with setup work, team orders between your two drivers, driver morale.
+- More circuits and a calendar that changes each year.
+- Replays of key moments, a broadcast-style camera.

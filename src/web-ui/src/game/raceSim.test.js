@@ -8,6 +8,7 @@ import { createRace, startRace, step, snapshot, lapFloat, setStrategy, FUEL, ERS
 import { CALENDAR } from '../data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
 import { teamsWithCars, startProject, carRating } from './factory';
+import { teamsForSeason, startOffSeason, signDriver, finishOffSeason, marketList } from './career';
 
 function runRace(seed, tweak) {
   const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
@@ -161,6 +162,43 @@ export function run() {
   ok(Object.values(season.teams).every((t) => Object.values(t.car).every((v) => v <= 0.995)), 'a car stat broke the ceiling');
   stats.push({ season: perTrack, champion: tables.drivers[0].name, champPoints: tables.drivers[0].points, totalPoints: driverSum,
     playerBudgetEnd: season.teams[PLAYER_TEAM_ID].budget, ratingGain: GRID_TEAMS.map((t, i) => `${t.short} ${(ratingEnd[i] - ratingStart[i]).toFixed(1)}`).join(', ') });
+
+  // Career: off-season, driver market and a second season
+  const spread = (sea) => {
+    const r = GRID_TEAMS.map((t) => carRating(sea.teams[t.id].car));
+    const avg = r.reduce((x, y) => x + y, 0) / r.length;
+    return Math.sqrt(r.reduce((x, y) => x + (y - avg) ** 2, 0) / r.length);
+  };
+  const spreadBefore = spread(season);
+  const tablesEnd = standings(season, teamsForSeason(GRID_TEAMS, season));
+  const agesBefore = Object.fromEntries(Object.values(season.career.drivers).map((d) => [d.id, d.age]));
+  let off = startOffSeason(season, GRID_TEAMS, tablesEnd.teams);
+  ok(off.phase === 'market', 'off-season did not open the market');
+  ok(Object.values(off.career.drivers).every((d) => d.retired || d.age === agesBefore[d.id] + 1), 'drivers did not age by one year');
+  const target = marketList(off.career, PLAYER_TEAM_ID).find((d) => !d.contract);
+  const teamPos = tablesEnd.teams.findIndex((t) => t.isPlayer) + 1;
+  const signed = signDriver(off, PLAYER_TEAM_ID, target.id, 1, 2, teamPos);
+  ok(signed.ok, `could not sign ${target.name}: ${signed.reason}`);
+  off = signed.season;
+  let season2 = finishOffSeason(off, GRID_TEAMS, PLAYER_TEAM_ID, tablesEnd.teams);
+  const seats = Object.values(season2.career.lineups).flat();
+  ok(seats.every(Boolean), 'an empty seat after the off-season');
+  ok(new Set(seats).size === seats.length, 'a driver sits in two seats');
+  ok(season2.career.lineups[PLAYER_TEAM_ID][1] === target.id, 'signed driver is not in the chosen seat');
+  ok(season2.career.year === season.career.year + 1, 'year did not advance');
+  ok(season2.results.length === 0 && Object.values(season2.driverPoints).every((p) => p === 0), 'points not reset');
+  ok(spread(season2) < spreadBefore, `regulation reset did not close the field (${spreadBefore.toFixed(2)} -> ${spread(season2).toFixed(2)})`);
+  // race one round of season 2 with the new lineups
+  const t2 = teamsForSeason(GRID_TEAMS, season2);
+  const r2 = createRace({ teams: t2, track: raceTrackOf(CALENDAR[0]), engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed: 77 });
+  startRace(r2);
+  let g2 = 0;
+  while (!r2.over && g2++ < 200000) step(r2, 0.5);
+  ok(r2.over, 'season 2 race did not finish');
+  ok(snapshot(r2).rows.some((r) => r.name === target.name), 'new signing did not race');
+  season2 = recordRace(season2, CALENDAR[0].id, snapshot(r2).rows, r2.fastest?.carId, t2);
+  ok(Number.isFinite(season2.teams[PLAYER_TEAM_ID].budget), 'budget broke in season 2');
+  stats.push({ career: { year2: season2.career.year, signed: target.name, spreadBefore: +spreadBefore.toFixed(2), spreadAfter: +spread(season2).toFixed(2), retired: off.offseasonNews } });
 
   return { pass: failures.length === 0, failures, stats };
 }

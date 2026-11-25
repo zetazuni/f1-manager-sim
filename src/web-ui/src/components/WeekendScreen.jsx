@@ -196,7 +196,7 @@ export const SeasonDone = ({ table, teamsTable, onNewSeason }) => {
         <p className="mt-1 text-data">Team: P{myTeam.pos} with {myTeam.points} points</p>
       </div>
       <button type="button" data-testid="new-season" onClick={onNewSeason} className="btn btn-primary mt-8 px-10 py-4 text-base">
-        Start a new season
+        Go to the driver market
       </button>
     </div>
   );
