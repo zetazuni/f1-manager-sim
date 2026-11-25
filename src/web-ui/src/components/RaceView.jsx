@@ -36,7 +36,8 @@ const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality =
     // CSS controls the canvas size; PlayCanvas matches its draw buffer to it.
     app.setCanvasFillMode(pc.FILLMODE_NONE);
     app.setCanvasResolution(pc.RESOLUTION_AUTO);
-    app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    // Low quality renders at 1x pixel ratio; high allows up to 2x on sharp screens
+    app.graphicsDevice.maxPixelRatio = quality === 'high' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
     const theme = ENVIRONMENTS[track?.env] || ENVIRONMENTS.forest;
     app.scene.ambientLight = col(theme.ambient, theme.ambientLevel * 2.2);
     // distance fog in the sky colour gives depth to the far edge of the map

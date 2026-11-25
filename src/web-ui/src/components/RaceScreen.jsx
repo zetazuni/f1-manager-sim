@@ -3,6 +3,8 @@ import Dashboard from './Dashboard';
 import RaceView from './RaceView';
 import TimingTower from './TimingTower';
 import RaceSummaryModal from './RaceSummaryModal';
+import StartLights from './StartLights';
+import { playLightBeep, playLightsOut } from '../services/AudioManager';
 import SimulationEngine from '../services/SimulationEngine';
 import { createRace, startRace, step, snapshot, carPose, setStrategy } from '../game/raceSim';
 
@@ -26,6 +28,9 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
   const [running, setRunning] = useState(false);
   const [summaryClosed, setSummaryClosed] = useState(false);
   const [focusId, setFocusId] = useState(`${playerTeamId}-0`);
+  const [lights, setLights] = useState(null); // start sequence: 0-5 lights, 'out', or null
+  const lightTimers = useRef([]);
+  useEffect(() => () => lightTimers.current.forEach(clearTimeout), []);
 
   // Simulation clock: a timer, independent of rendering. It steps by the real
   // time that passed (up to 2 s), so a slow frame or a background tab never
@@ -79,9 +84,24 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
 
   const toggleRun = useCallback(() => {
     const race = raceRef.current;
-    startRace(race);
-    setRunning((r) => !r && !race.over);
-  }, []);
+    if (race.started) {
+      setRunning((r) => !r && !race.over);
+      return;
+    }
+    if (lights !== null) return; // start sequence already running
+    // Five red lights, one every 0.6 s, then a random hold before lights out
+    const later = (fn, ms) => lightTimers.current.push(setTimeout(fn, ms));
+    setLights(0);
+    for (let i = 1; i <= 5; i++) later(() => { setLights(i); playLightBeep(); }, i * 600);
+    const hold = 3000 + 300 + Math.random() * 900;
+    later(() => {
+      setLights('out');
+      playLightsOut();
+      startRace(race);
+      setRunning(true);
+    }, hold);
+    later(() => setLights(null), hold + 1100);
+  }, [lights]);
 
   const changeStrategy = useCallback((carId, change) => {
     setStrategy(raceRef.current, carId, change);
@@ -113,7 +133,8 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
           focusId={focusId}
           onFocus={setFocusId}
         />
-        <section className="panel overflow-hidden p-4">
+        <section className="panel relative overflow-hidden p-4">
+          <StartLights lit={lights} />
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2 className="panel-title">{roundLabel} | {track.name}</h2>
             <p className="label hidden sm:block">Scroll to zoom | click a driver to follow</p>
