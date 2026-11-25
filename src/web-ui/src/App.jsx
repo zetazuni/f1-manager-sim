@@ -2,14 +2,17 @@ import React, { useState, useCallback, useMemo } from 'react';
 import RaceScreen from './components/RaceScreen';
 import StandingsView from './components/StandingsView';
 import CalendarView from './components/CalendarView';
+import FactoryView from './components/FactoryView';
 import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
 import { CALENDAR } from './data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
+import { startProject, teamsWithCars } from './game/factory';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
+  { id: 'hq', label: 'Team HQ' },
   { id: 'standings', label: 'Standings' },
   { id: 'calendar', label: 'Calendar' },
 ];
@@ -35,6 +38,8 @@ function App() {
   const track = useMemo(() => raceTrackOf(calTrack), [calTrack]);
   const table = useMemo(() => standings(season, GRID_TEAMS), [season]);
   const done = season.phase === 'done';
+  // grid teams with this season's developed cars and budgets
+  const raceTeams = useMemo(() => teamsWithCars(GRID_TEAMS, season.teams), [season.teams]);
 
   const nameOf = useCallback((carId) => {
     if (!carId) return { name: '-', color: '#64748b', isPlayer: false };
@@ -46,16 +51,21 @@ function App() {
 
   const qualify = () => {
     const quali = runQualifying({
-      teams: GRID_TEAMS, track, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, modes, seed: Date.now(),
+      teams: raceTeams, track, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, modes, seed: Date.now(),
     });
     setSeason((s) => ({ ...s, phase: 'quali', quali }));
   };
   const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
   const onFinished = useCallback((snap, fastestCarId) => {
-    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId));
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, GRID_TEAMS));
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
+  const startUpgrade = (area, tier) => {
+    const res = startProject(season, PLAYER_TEAM_ID, area, tier);
+    if (res.ok) setSeason(res.season);
+    return res;
+  };
   const restartSeason = () => {
     setSeason(newSeason());
     setTab('weekend');
@@ -110,6 +120,9 @@ function App() {
         {tab === 'standings' && (
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
+        {tab === 'hq' && (
+          <FactoryView season={season} teams={GRID_TEAMS} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
+        )}
         {tab === 'calendar' && (
           <CalendarView calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
         )}
@@ -146,7 +159,7 @@ function App() {
           <div className={tab === 'weekend' ? '' : 'hidden'}>
             <RaceScreen
               key={`race-${season.round}`}
-              teams={GRID_TEAMS}
+              teams={raceTeams}
               playerTeamId={PLAYER_TEAM_ID}
               track={track}
               gridOrder={season.quali?.map((q) => q.carId)}

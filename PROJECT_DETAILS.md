@@ -27,6 +27,7 @@ A realistic and fun Formula 1 Management Simulator.
 - **2026-10-09**: Enhanced CLI simulation with full race weekend simulation, strategy, and financial management.
 - **2026-11-15**: Race radio events on the dashboard.
 - **2026-11-25**: M1 layers and graphics recheck (Tailwind v4 actually loaded, CSS layers, z-index scale, rebuilt PlayCanvas scene, C# engine builds on .NET 8). Milestones now tracked in `docs/ROADMAP.md`.
+- **2026-11-26**: M5 factory and finances (upgrade projects, budget, sponsors, AI development, Team HQ screen).
 - **2026-11-26**: M4 season (6 circuits, qualifying, championships), Standings and Calendar screens, pit wall theme, per-circuit 3D environments.
 - **2026-11-26**: M3 tyres and pit stops (compounds, wear cliff, punctures, pit lane and garages in 3D, AI strategy, engineer toggle); merged meshes cut draw calls from 1071 to 53.
 - **2026-11-25**: M2 full grid race (20 cars, race clock sim, overtakes, ERS battery, timing tower, results with points).
@@ -63,6 +64,8 @@ A realistic and fun Formula 1 Management Simulator.
 - `src/web-ui/src/components/TimingTower.jsx` - live timing
 - `src/web-ui/src/game/tyres.js` - tyre compounds and wear model
 - `src/web-ui/src/game/meshBuilder.js` - merges coloured boxes into one mesh (one draw call)
+- `src/web-ui/src/game/factory.js` - upgrades, money, AI development
+- `src/web-ui/src/components/FactoryView.jsx` - Team HQ screen
 - `src/web-ui/src/game/season.js` - season, qualifying, points, standings
 - `src/web-ui/src/game/environments.js` - per-circuit look and props
 - `src/web-ui/src/data/calendar.js` - the 6 circuits

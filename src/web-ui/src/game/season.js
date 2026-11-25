@@ -4,6 +4,7 @@
 
 import { POINTS } from '../data/grid';
 import { makeRng } from './raceSim';
+import { createTeamStates, settleRound } from './factory';
 
 export const QUALI_MODE = { Safe: 'Safe', Push: 'Push' };
 const PUSH_GAIN = 0.25; // s found by pushing
@@ -31,6 +32,9 @@ export function createSeason({ teams, calendar, playerTeamId, seed = Date.now() 
     results: [], // per round: { trackId, rows: [{ carId, pos, points, dnf, fastest }] }
     driverPoints: Object.fromEntries(ids.map((id) => [id, 0])),
     teamPoints: Object.fromEntries(teams.map((t) => [t.id, 0])),
+    teams: createTeamStates(teams, playerTeamId), // budgets, developed cars, projects
+    ledger: [], // player money in and out: { round, label, amount ($M) }
+    news: [], // messages from the last round (upgrades fitted, sponsor bonus)
   };
 }
 
@@ -63,8 +67,11 @@ export function runQualifying({ teams, track, engine, playerTeamId, modes = {}, 
   return rows.map((r, i) => ({ ...r, pos: i + 1 }));
 }
 
-/** Add a finished race (snapshot rows from raceSim) to the season. */
-export function recordRace(season, trackId, rows, fastestCarId) {
+/**
+ * Add a finished race (snapshot rows from raceSim) to the season. With `teams`
+ * it also settles money and car development for the round (factory.js).
+ */
+export function recordRace(season, trackId, rows, fastestCarId, teams = null) {
   const next = structuredClone(season);
   const out = rows.map((r) => {
     let points = r.dnf ? 0 : POINTS[r.pos - 1] || 0;
@@ -79,6 +86,10 @@ export function recordRace(season, trackId, rows, fastestCarId) {
   });
   next.results.push({ trackId, rows: out });
   next.phase = 'results';
+  if (teams && next.teams) {
+    const byId = new Map(out.map((r) => [r.carId, r]));
+    settleRound(next, rows.map((r) => ({ id: r.id, pos: r.pos, grid: r.grid, dnf: r.dnf, points: byId.get(r.id)?.points || 0 })), teams);
+  }
   return next;
 }
 
