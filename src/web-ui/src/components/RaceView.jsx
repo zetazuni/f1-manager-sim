@@ -277,13 +277,13 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
             type="button"
             data-camera={id}
             onClick={() => setCameraMode(id)}
-            className={`chip px-2.5 py-1 text-[11px] ${cameraMode === id ? 'bg-f1-red text-white' : 'chip-off'}`}
+            className={`chip px-2.5 py-1 text-[11px] ${cameraMode === id ? 'bg-lantern text-ink' : 'chip-off'}`}
           >
             {label}
           </button>
         ))}
       </div>
-      <p className="pointer-events-none absolute bottom-2 right-3 z-hud text-[10px] uppercase tracking-widest text-slate-400/80">
+      <p className="pointer-events-none absolute bottom-2 right-3 z-hud text-[10px] text-muted/80">
         {cameraMode === 'overview' ? 'Scroll to zoom' : 'Following the selected driver'}
       </p>
     </div>

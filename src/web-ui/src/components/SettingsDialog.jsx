@@ -10,7 +10,7 @@ const Choice = ({ label, value, options, onChange, testId }) => (
           type="button"
           data-setting={`${testId}-${o.value}`}
           onClick={() => onChange(o.value)}
-          className={`chip ${value === o.value ? 'bg-f1-red text-white' : 'chip-off'}`}
+          className={`chip ${value === o.value ? 'bg-lantern text-ink' : 'chip-off'}`}
         >
           {o.label}
         </button>
@@ -31,7 +31,7 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
     <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Settings">
       <div className="panel w-full max-w-md space-y-5 bg-panel p-6" data-testid="settings">
         <div className="flex items-center justify-between">
-          <h2 className="display text-2xl italic">Settings</h2>
+          <h2 className="display text-2xl">Settings</h2>
           <button type="button" onClick={onClose} className="btn btn-ghost px-3 py-1.5 text-xs" data-testid="settings-close">Done</button>
         </div>
         <Choice
@@ -52,7 +52,7 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
         />
         <div className="rounded-lg border border-line bg-ink/60 p-4">
           <p className="label">Career</p>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="mt-1 text-sm text-cream/75">
             Saved automatically in this browser after every change.
           </p>
           {!confirmReset ? (

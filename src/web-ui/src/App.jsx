@@ -165,14 +165,14 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen font-sans text-slate-100">
+    <div className="min-h-screen font-sans text-cream">
       <header className="sticky top-0 z-header border-b border-line bg-ink/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-6 px-4">
           <div className="flex items-center gap-3 py-3">
-            <span className="grid h-9 w-9 place-items-center rounded-md bg-f1-red font-display text-xl font-bold italic shadow-[0_0_20px_rgba(225,6,0,0.5)]">Z</span>
+            <span className="lamp-glow grid h-9 w-9 place-items-center rounded-xl bg-f1-red font-display text-xl font-bold">Z</span>
             <div className="leading-none">
-              <p className="font-display text-xl font-bold italic tracking-wide">ZETRACE</p>
-              <p className="font-display text-[10px] uppercase tracking-[0.35em] text-muted">F1 Manager</p>
+              <p className="display text-2xl leading-none text-cream">Zetrace</p>
+              <p className="text-[11px] text-muted/80">F1 manager</p>
             </div>
           </div>
           <nav className="flex" aria-label="Main">
@@ -188,9 +188,9 @@ function App() {
                 {phaseSteps.map((p, i) => {
                   const idx = phaseSteps.indexOf(season.phase);
                   return (
-                    <li key={p} className={`rounded px-2 py-0.5 font-display text-[11px] font-bold uppercase tracking-widest ${
-                      i === idx ? 'bg-f1-red text-white' : i < idx ? 'text-emerald-400' : 'text-muted'
-                    }`}
+                    <li key={p} className={`rounded px-2 py-0.5 font-display text-[11px] font-bold ${
+ i === idx ? 'bg-gradient-to-r from-lantern to-rose text-ink' : i < idx ? 'text-data' : 'text-muted/70'
+ }`}
                     >
                       {p === 'preview' ? 'Preview' : p === 'quali' ? 'Qualifying' : p === 'race' ? 'Race' : 'Results'}
                     </li>
@@ -200,7 +200,7 @@ function App() {
             )}
             <div>
               <p className="label">{year} | {done ? 'Season complete' : inMarket ? 'Off-season' : roundLabel}</p>
-              <p className="font-display text-sm font-bold uppercase tracking-wider">{done ? 'Final standings' : inMarket ? 'Driver market' : calTrack.name}</p>
+              <p className="font-display text-sm font-bold">{done ? 'Final standings' : inMarket ? 'Driver market' : calTrack.name}</p>
             </div>
             <button
               type="button"
@@ -208,7 +208,7 @@ function App() {
               title="Settings"
               data-testid="settings-open"
               onClick={() => setSettingsOpen(true)}
-              className="grid h-9 w-9 place-items-center rounded-lg border border-line-2 bg-panel-2 text-slate-300 hover:bg-line-2 hover:text-white"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-line-2 bg-panel-2 text-cream/75 hover:bg-line-2 hover:text-white"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                 <circle cx="12" cy="12" r="3" />
@@ -220,6 +220,7 @@ function App() {
       </header>
 
       <main className="mx-auto max-w-[1800px] p-4">
+        <div key={`${tab}-${season.phase}-${season.round}`}>
         {tab === 'standings' && (
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
@@ -263,6 +264,7 @@ function App() {
             )}
           </>
         )}
+        </div>
         {/* The race stays mounted while browsing other tabs so it keeps running */}
         {season.phase === 'race' && (
           <div className={tab === 'weekend' ? '' : 'hidden'}>

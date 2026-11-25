@@ -31,11 +31,11 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
   };
 
   return (
-    <div className="space-y-5" data-testid="offseason">
+    <div className="screen-enter space-y-5" data-testid="offseason">
       <div className="panel flex flex-wrap items-end justify-between gap-4 p-5">
         <div>
           <p className="label">Off-season</p>
-          <h2 className="display text-4xl italic">Driver market {career.year + 1}</h2>
+          <h2 className="display text-4xl">Driver market {career.year + 1}</h2>
           <p className="text-sm text-muted">Contracts ran down by a year. Re-sign your drivers or bring in someone new. Signing bonus = half a year of salary, paid now.</p>
         </div>
         <div className="text-right">
@@ -64,12 +64,12 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
             return (
               <div key={id} className={`rounded-lg border p-4 ${expired ? 'border-amber-400/50 bg-amber-400/5' : 'border-line bg-panel-2/50'}`}>
                 <div className="flex items-baseline justify-between">
-                  <p className="font-display text-xl font-bold uppercase">{d.name}</p>
+                  <p className="font-display text-xl font-bold">{d.name}</p>
                   <p className="font-mono text-sm">{driverRating(d)} <span className="text-muted">ovr</span></p>
                 </div>
                 <p className="text-xs text-muted">Age {d.age} | <Stars potential={d.potential} /> | ${(d.salary / 1e6).toFixed(1)}M a year</p>
                 <p className="mt-1"><MoraleMeter value={d.morale} /></p>
-                <p className={`mt-1 text-xs ${expired ? 'text-amber-300' : 'text-slate-400'}`}>
+                <p className={`mt-1 text-xs ${expired ? 'text-amber-300' : 'text-muted'}`}>
                   {expired ? 'Contract ended: re-sign or the driver leaves' : `Contract: ${d.contract.years} more year${d.contract.years > 1 ? 's' : ''}`}
                 </p>
                 {expired && (
@@ -84,7 +84,7 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
             <p className="label mb-2">Contract length for new signings</p>
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3].map((y) => (
-                <button key={y} type="button" onClick={() => setYears(y)} className={`chip ${years === y ? 'bg-f1-red text-white' : 'chip-off'}`}>
+                <button key={y} type="button" onClick={() => setYears(y)} className={`chip ${years === y ? 'bg-lantern text-ink' : 'chip-off'}`}>
                   {y} year{y > 1 ? 's' : ''}
                 </button>
               ))}

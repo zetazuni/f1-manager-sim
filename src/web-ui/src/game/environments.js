@@ -4,22 +4,22 @@
 export const ENVIRONMENTS = {
   forest: {
     label: 'Parkland', ground: '#2f6b35', ground2: '#3b7f40', runoff: '#8a8470', sky: '#9cc3e6',
-    sun: { color: '#fff4dc', intensity: 1.45, pitch: 50, yaw: 30 }, ambient: '#5f6b80', ambientLevel: 0.42,
+    sun: { color: '#ffe2b8', intensity: 1.45, pitch: 40, yaw: 35 }, ambient: '#6e6488', ambientLevel: 0.42,
     walls: false,
   },
   desert: {
     label: 'Desert', ground: '#d8b878', ground2: '#c9a463', runoff: '#c4a06a', sky: '#f1d7a8',
-    sun: { color: '#ffe2b0', intensity: 1.6, pitch: 42, yaw: 60 }, ambient: '#8a7250', ambientLevel: 0.45,
+    sun: { color: '#ffcf96', intensity: 1.55, pitch: 34, yaw: 60 }, ambient: '#8a6a5a', ambientLevel: 0.45,
     walls: false,
   },
   city: {
     label: 'Street circuit', ground: '#5b6270', ground2: '#4d5461', runoff: '#6b7280', sky: '#b9c6d6',
-    sun: { color: '#fff7ea', intensity: 1.35, pitch: 55, yaw: 20 }, ambient: '#5f6878', ambientLevel: 0.48,
+    sun: { color: '#ffe0bd', intensity: 1.35, pitch: 42, yaw: 25 }, ambient: '#6a6480', ambientLevel: 0.48,
     walls: true,
   },
   coast: {
     label: 'Coastal', ground: '#4f9a53', ground2: '#5aa65c', runoff: '#d9c79a', sky: '#9fd3ee',
-    sun: { color: '#fff3d6', intensity: 1.5, pitch: 48, yaw: 40 }, ambient: '#5e7890', ambientLevel: 0.45,
+    sun: { color: '#ffdcb0', intensity: 1.5, pitch: 38, yaw: 40 }, ambient: '#66688c', ambientLevel: 0.45,
     walls: false,
   },
   night: {
@@ -29,7 +29,7 @@ export const ENVIRONMENTS = {
   },
   alpine: {
     label: 'Alpine', ground: '#4d7b3c', ground2: '#5b8a46', runoff: '#857e6c', sky: '#bcd6ec',
-    sun: { color: '#fffaf0', intensity: 1.5, pitch: 46, yaw: 25 }, ambient: '#62708a', ambientLevel: 0.42,
+    sun: { color: '#fff0dc', intensity: 1.5, pitch: 40, yaw: 25 }, ambient: '#6a6c90', ambientLevel: 0.42,
     walls: false,
   },
 };

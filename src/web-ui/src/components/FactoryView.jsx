@@ -42,8 +42,8 @@ const PerformanceChart = ({ rows }) => {
               <tr key={r.key} className="border-t border-line">
                 <td className="py-1.5">{r.label}</td>
                 <td className="py-1.5 text-right font-mono">{(r.value * 100).toFixed(1)}</td>
-                <td className="py-1.5 text-right font-mono text-slate-400">{(r.best * 100).toFixed(1)}</td>
-                <td className="py-1.5 text-right font-mono text-slate-400">{(r.avg * 100).toFixed(1)}</td>
+                <td className="py-1.5 text-right font-mono text-muted">{(r.best * 100).toFixed(1)}</td>
+                <td className="py-1.5 text-right font-mono text-muted">{(r.avg * 100).toFixed(1)}</td>
                 <td className="py-1.5 text-right font-mono">P{r.rank}</td>
               </tr>
             ))}
@@ -58,7 +58,7 @@ const PerformanceChart = ({ rows }) => {
               onMouseEnter={() => setHover(r.key)}
               onMouseLeave={() => setHover(null)}
             >
-              <span className="text-sm text-slate-300">{r.label}</span>
+              <span className="text-sm text-cream/75">{r.label}</span>
               <div className="relative h-4">
                 <div className="absolute inset-y-1.5 inset-x-0 rounded-full bg-ink" />
                 <div className="absolute inset-y-0.5 left-0 rounded-r-[4px]" style={{ width: pct(r.value), background: SERIES }} />
@@ -75,9 +75,9 @@ const PerformanceChart = ({ rows }) => {
               <span className="text-right font-mono text-sm">P{r.rank}</span>
               {hover === r.key && (
                 <div className="pointer-events-none absolute left-36 top-full z-hud mt-1 rounded-md border border-line-2 bg-panel-2 px-3 py-2 text-xs shadow-xl">
-                  <p className="font-bold text-slate-100">{r.label}</p>
-                  <p className="text-slate-300">Us {(r.value * 100).toFixed(1)} | best {(r.best * 100).toFixed(1)} ({r.bestTeam}) | average {(r.avg * 100).toFixed(1)}</p>
-                  {r.pending > 0 && <p className="text-slate-400">+{(r.pending * 100).toFixed(1)} in development</p>}
+                  <p className="font-bold text-cream">{r.label}</p>
+                  <p className="text-cream/75">Us {(r.value * 100).toFixed(1)} | best {(r.best * 100).toFixed(1)} ({r.bestTeam}) | average {(r.avg * 100).toFixed(1)}</p>
+                  {r.pending > 0 && <p className="text-muted">+{(r.pending * 100).toFixed(1)} in development</p>}
                 </div>
               )}
             </div>
@@ -118,7 +118,7 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
   };
 
   return (
-    <div className="space-y-5" data-testid="hq">
+    <div className="screen-enter space-y-5" data-testid="hq">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Tile label="Development budget" sub="Spent on upgrades, topped up after each race">
           <span className="text-emerald-400" data-testid="budget">{money(me.budget)}</span>
@@ -148,7 +148,7 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
               return (
                 <div key={p.id} className="rounded-lg border border-line bg-ink/50 p-3">
                   <div className="flex items-baseline justify-between">
-                    <p className="font-display font-bold uppercase">{TIERS[p.tier].label} {AREAS.find((a) => a.key === p.area).label}</p>
+                    <p className="font-display font-bold">{TIERS[p.tier].label} {AREAS.find((a) => a.key === p.area).label}</p>
                     <p className="text-xs text-muted">ready in {p.roundsLeft} race{p.roundsLeft > 1 ? 's' : ''}</p>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-panel-2">
@@ -165,7 +165,7 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
             {recent.map((l, i) => (
               <div key={i} className="flex items-center gap-3 border-t border-line py-1 text-xs">
                 <span className="w-8 font-mono text-muted">R{l.round}</span>
-                <span className="flex-1 text-slate-300">{l.label}</span>
+                <span className="flex-1 text-cream/75">{l.label}</span>
                 <span className={`font-mono ${l.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{l.amount >= 0 ? '+' : ''}{money(l.amount)}</span>
               </div>
             ))}

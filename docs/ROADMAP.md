@@ -113,6 +113,15 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Morale meters on the race driver cards and in the driver market; "Morale after the race" on the results screen.
 - `tools/run-checks.mjs` runs track validation and every UI flow; all pass.
 
+## M12 Cozy look: "paddock at dusk" (DONE, 2026-11-26)
+
+- New identity: the team motorhome after a session. Dusk sky background (indigo to plum with lantern-amber and rose glows, faint grain), frosted-glass panels at several opacities (panel 70 %, insets, 8 % hairlines), lantern amber and rose as the warm accents, mint for live data. Zetrace red stays for the team mark and race-critical states.
+- Bricolage Grotesque variable font bundled with the app (`@fontsource-variable`, no web requests), slightly condensed for headings, tabular figures for timing. Labels in sentence case instead of all caps.
+- Primary actions use a lantern-to-rose gradient, Lights out a mint gradient; selected chips in lantern, rose (ERS, push lap) and lavender (fuel).
+- Motion: panels rise in a short stagger when the screen or weekend phase changes (one orchestrated moment), tab underline grows in, buttons respond to presses, the Z logo glows like a lamp. Everything is turned off under "reduce motion". No blur in animations (costly over frosted glass).
+- 3D: golden-hour sunlight and warmer ambient on the daytime circuits to match the interface.
+- `tools/run-checks.mjs` retries a failed UI check once and labels it, and can run selected checks only.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

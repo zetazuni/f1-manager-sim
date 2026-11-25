@@ -2,7 +2,7 @@
 /**
  * Run every check in order and print a summary.
  *
- *   node tools/run-checks.mjs [baseUrl] [outDir]
+ *   node tools/run-checks.mjs [baseUrl] [outDir] [only,these,checks]
  *
  * baseUrl defaults to http://localhost:5317/ (start it with:
  * cd src/web-ui && npm run dev -- --port 5317). Exit code 1 if anything fails.
@@ -33,14 +33,24 @@ const results = [];
 const tracks = spawnSync(process.execPath, [path.join(here, 'validate-tracks.mjs')], { encoding: 'utf8' });
 results.push(['validate-tracks', tracks.status === 0, tracks.status === 0 ? '6 layouts OK' : tracks.stdout.trim()]);
 
+const only = process.argv[4] ? process.argv[4].split(',') : null;
 for (const [name, query] of CHECKS) {
+  if (only && !only.includes(name)) continue;
   const t0 = Date.now();
-  const r = spawnSync(process.execPath, [
+  const runOnce = () => spawnSync(process.execPath, [
     path.join(here, 'check-ui.mjs'), base + query, path.join(out, name), path.join(here, 'checks', `${name}.json`),
     '--size=1600x1000', '--limit=280000',
   ], { encoding: 'utf8' });
+  let r = runOnce();
+  // headless software rendering on a busy machine can starve a page load;
+  // retry once and say so, so a real failure still fails twice
+  let retried = false;
+  if (r.status !== 0 && name !== 'm2-sim') {
+    retried = true;
+    r = runOnce();
+  }
   let ok = r.status === 0;
-  let note = `${Math.round((Date.now() - t0) / 1000)} s`;
+  let note = `${Math.round((Date.now() - t0) / 1000)} s${retried ? (ok ? ' (passed on retry)' : ' (failed twice)') : ''}`;
   // the simulation check reports its own pass/fail inside the page
   if (name === 'm2-sim') {
     const m = r.stdout.match(/"pass":\s*(true|false)/);

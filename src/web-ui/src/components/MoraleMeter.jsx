@@ -17,7 +17,7 @@ const MoraleMeter = ({ value = 65, compact = false }) => {
       <span className={`relative inline-block h-1.5 overflow-hidden rounded-full bg-ink ${compact ? 'w-8' : 'w-12'}`}>
         <span className={`absolute inset-y-0 left-0 rounded-full ${bar}`} style={{ width: `${value}%` }} />
       </span>
-      <span className={`text-[10px] font-bold uppercase tracking-wider ${text}`}>{label}</span>
+      <span className={`text-[10px] font-bold ${text}`}>{label}</span>
     </span>
   );
 };

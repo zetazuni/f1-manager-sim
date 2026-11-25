@@ -10,7 +10,7 @@ const EVENT_COLOR = {
   success: 'text-emerald-400',
   warning: 'text-amber-300',
   fastest: 'text-purple-400',
-  info: 'text-slate-200',
+  info: 'text-cream/90',
 };
 const EVENT_DOT = {
   danger: 'bg-red-500',
@@ -22,13 +22,13 @@ const EVENT_DOT = {
 
 const SPEEDS = [1, 2, 4];
 
-const chip = (active, activeClass) => `chip ${active ? `${activeClass} text-white shadow-lg ring-1 ring-white/20` : 'chip-off'}`;
+const chip = (active, activeClass) => `chip ${active ? `${activeClass} shadow-[0_6px_18px_-8px_rgba(0,0,0,0.6)] ring-1 ring-white/25` : 'chip-off'}`;
 
 const Bar = ({ value, color, label, warn = false }) => (
   <div>
-    <div className="mb-1 flex justify-between text-[10px] uppercase tracking-widest text-muted">
+    <div className="mb-1 flex justify-between text-[10px] text-muted">
       <span>{label}</span>
-      <span className={`font-mono ${warn ? 'text-amber-300' : 'text-slate-200'}`}>{value.toFixed(0)}</span>
+      <span className={`font-mono ${warn ? 'text-amber-300' : 'text-cream/90'}`}>{value.toFixed(0)}</span>
     </div>
     <div className="h-1.5 overflow-hidden rounded-full bg-ink">
       <div className={`h-full rounded-full ${color} transition-[width] duration-300`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
@@ -47,19 +47,19 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
     >
       <button type="button" onClick={() => onFocus(row.id)} className="mb-3 flex w-full items-center justify-between gap-2 text-left">
         <span className="flex items-baseline gap-3">
-          <span className="font-display text-3xl font-bold italic leading-none">P{row.pos}</span>
+          <span className="font-display text-3xl font-bold leading-none">P{row.pos}</span>
           <span>
-            <span className="block font-display text-lg font-bold uppercase leading-tight tracking-wide">{row.name}</span>
+            <span className="block font-display text-lg font-bold leading-tight">{row.name}</span>
             <span className="flex items-center gap-2 text-[11px] text-muted">
               from P{row.grid} {row.pos < row.grid ? `(+${row.grid - row.pos})` : ''}
               <MoraleMeter value={row.morale} compact />
             </span>
           </span>
         </span>
-        <span className="text-right font-mono text-xs text-slate-400">
+        <span className="text-right font-mono text-xs text-muted">
           {row.dnf ? <span className="text-red-400">DNF: {row.dnf}</span> : (
             <>
-              <span className="block text-slate-200">{row.gap}</span>
+              <span className="block text-cream/90">{row.gap}</span>
               <span>last {formatLap(row.lastLap)}</span>
             </>
           )}
@@ -92,7 +92,7 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
         <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
           <span className="label">ERS</span>
           {[ERS.Neutral, ERS.Attack, ERS.Overtake].map((m) => (
-            <button key={m} type="button" onClick={() => act({ ersMode: m })} className={chip(row.ersMode === m, 'bg-f1-red')}>{m}</button>
+            <button key={m} type="button" onClick={() => act({ ersMode: m })} className={chip(row.ersMode === m, 'bg-rose text-ink')}>{m}</button>
           ))}
         </div>
         <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
@@ -105,7 +105,7 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
                 type="button"
                 data-pit={k}
                 onClick={() => act(started ? { pitRequest: row.pitRequest === k ? null : k } : { compound: k })}
-                className={`${chip(active, 'bg-slate-600')} flex items-center justify-center gap-1.5`}
+                className={`${chip(active, 'bg-lantern text-ink')} flex items-center justify-center gap-1.5`}
               >
                 <span className="h-2 w-2 rounded-full" style={{ background: COMPOUNDS[k].color }} />
                 {COMPOUNDS[k].name}
@@ -123,7 +123,7 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
                 type="button"
                 data-pit={k}
                 onClick={() => act(started ? { pitRequest: row.pitRequest === k ? null : k } : { compound: k })}
-                className={`${chip(active, 'bg-slate-600')} flex items-center justify-center gap-1.5`}
+                className={`${chip(active, 'bg-lantern text-ink')} flex items-center justify-center gap-1.5`}
               >
                 <span className="h-2 w-2 rounded-full" style={{ background: COMPOUNDS[k].color }} />
                 {k === 'I' ? 'Inter' : 'Wet'}
@@ -135,7 +135,7 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
         <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
           <span className="label">Fuel</span>
           {[FUEL.Lean, FUEL.Standard, FUEL.Rich].map((m) => (
-            <button key={m} type="button" onClick={() => act({ fuelMode: m })} className={chip(row.fuelMode === m, 'bg-blue-600')}>{m}</button>
+            <button key={m} type="button" onClick={() => act({ fuelMode: m })} className={chip(row.fuelMode === m, 'bg-[#a59cf5] text-ink')}>{m}</button>
           ))}
         </div>
       </fieldset>
@@ -168,7 +168,7 @@ const WeatherStrip = ({ wetness = 0, forecast }) => {
       </svg>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between">
-          <span className="font-display text-sm font-bold uppercase tracking-wider">{label}</span>
+          <span className="font-display text-sm font-bold">{label}</span>
           <span className="text-[11px] text-muted">{forecast ? `Radar: rain from about lap ${forecast.from}` : wetness > 0.05 ? 'Track wetness' : 'No rain on the radar'}</span>
         </div>
         <div className="mt-1 h-1 overflow-hidden rounded-full bg-panel-2">
@@ -182,7 +182,7 @@ const WeatherStrip = ({ wetness = 0, forecast }) => {
 const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, onStrategy, onTeamOrder = () => {}, onRestart, finishLabel = 'New race', focusId, onFocus }) => {
   // fixed order (driver 1, driver 2) so buttons never swap under the cursor when positions change
   const players = snap.rows.filter((r) => r.isPlayer).sort((a, b) => a.id.localeCompare(b.id));
-  const lapText = snap.over ? 'FINISHED' : `LAP ${snap.started ? snap.leaderLap : 0} / ${snap.totalLaps}`;
+  const lapText = snap.over ? 'Finished' : `Lap ${snap.started ? snap.leaderLap : 0} of ${snap.totalLaps}`;
   const progress = snap.over ? 100 : snap.started ? ((snap.leaderLap - 1) / snap.totalLaps) * 100 : 0;
 
   return (
@@ -191,21 +191,21 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
         <div className="flex items-end justify-between">
           <div>
             <p className="label mb-1">{track.name} | {team.name}</p>
-            <p className="font-display text-4xl font-bold italic leading-none tracking-tight" data-testid="lap">{lapText}</p>
+            <p className="font-display text-4xl font-bold leading-none tracking-tight" data-testid="lap">{lapText}</p>
           </div>
           <div className="text-right">
             <p className="label">Budget</p>
-            <p className="font-mono text-xl text-emerald-400">${(team.budget / 1e6).toFixed(1)}M</p>
+            <p className="font-mono text-xl text-data">${(team.budget / 1e6).toFixed(1)}M</p>
           </div>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-ink">
-          <div className="h-full bg-gradient-to-r from-f1-red to-orange-400 transition-[width] duration-500" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-gradient-to-r from-lantern to-rose transition-[width] duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {snap.safetyCar && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-400/60 bg-amber-400/15 px-4 py-2.5" data-testid="sc-banner">
-          <span className="animate-pulse rounded bg-amber-400 px-2 py-0.5 font-display text-sm font-bold tracking-widest text-slate-900">SAFETY CAR</span>
+          <span className="animate-pulse rounded bg-amber-400 px-2 py-0.5 font-display text-sm font-bold text-slate-900">SAFETY CAR</span>
           <span className="text-xs text-amber-100">No overtaking. The field closes up and pit stops cost about half as much.</span>
         </div>
       )}
@@ -218,14 +218,14 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
         {snap.events.length ? (
           <ul className="space-y-1.5">
             {snap.events.slice(0, 3).map((e, i) => (
-              <li key={`${e.time}-${i}`} className={`flex items-start gap-2 text-sm ${EVENT_COLOR[e.type] || 'text-slate-200'} ${i ? 'opacity-60' : ''}`}>
+              <li key={`${e.time}-${i}`} className={`flex items-start gap-2 text-sm ${EVENT_COLOR[e.type] || 'text-cream/90'} ${i ? 'opacity-60' : ''}`}>
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${EVENT_DOT[e.type] || 'bg-slate-400'}`} />
                 <span><span className="font-mono text-xs text-muted">L{e.lap}</span> {e.message}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm italic text-muted">{snap.started ? 'All quiet on the radio.' : 'Lights out when you are ready.'}</p>
+          <p className="text-sm text-muted">{snap.started ? 'All quiet on the radio.' : 'Lights out when you are ready.'}</p>
         )}
       </div>
 
@@ -245,7 +245,7 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
                 type="button"
                 data-order={o}
                 onClick={() => { playClickSound(); onTeamOrder(o); }}
-                className={chip((snap.teamOrders?.[team.id] || 'race') === o, 'bg-slate-600')}
+                className={chip((snap.teamOrders?.[team.id] || 'race') === o, 'bg-lantern text-ink')}
               >
                 {label}
               </button>
@@ -280,7 +280,7 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
         )}
         <div className="flex items-center gap-1 rounded-lg border border-line bg-ink/60 p-1" role="group" aria-label="Race speed">
           {SPEEDS.map((s) => (
-            <button key={s} type="button" data-speed={s} onClick={() => onSpeed(s)} className={chip(speed === s, 'bg-slate-600')}>
+            <button key={s} type="button" data-speed={s} onClick={() => onSpeed(s)} className={chip(speed === s, 'bg-lantern text-ink')}>
               {s}x
             </button>
           ))}
