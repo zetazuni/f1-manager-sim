@@ -6,7 +6,7 @@ import RaceSummaryModal from './RaceSummaryModal';
 import StartLights from './StartLights';
 import { playLightBeep, playLightsOut } from '../services/AudioManager';
 import SimulationEngine from '../services/SimulationEngine';
-import { createRace, startRace, step, snapshot, carPose, setStrategy } from '../game/raceSim';
+import { createRace, startRace, step, snapshot, carPose, setStrategy, safetyCarPose, wetnessAt, order } from '../game/raceSim';
 
 // Race seconds per real second at "1x": one ~75 s lap in about 1.25 s.
 const BASE_SPEED = 60;
@@ -24,6 +24,7 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
   }));
   const raceRef = useRef(firstRace);
   const carsRef = useRef([]);
+  const weatherRef = useRef(0);
   const [snap, setSnap] = useState(() => snapshot(firstRace));
   const [running, setRunning] = useState(false);
   const [summaryClosed, setSummaryClosed] = useState(false);
@@ -57,7 +58,10 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
   // Visuals: every animation frame, place the cars for the 3D view
   useEffect(() => {
     let raf = 0;
-    const tick = () => {
+    let lastFrame = performance.now();
+    const tick = (now = performance.now()) => {
+      const frameDt = Math.min(1, (now - lastFrame) / 1000);
+      lastFrame = now;
       const race = raceRef.current;
       // spread cars across the track when they run close together
       const byDistance = race.cars
@@ -76,6 +80,12 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
         if (!c.dnf) { prevLf = lf; prevLane = lane; }
         return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane };
       });
+      const sc = safetyCarPose(race);
+      if (sc) carsRef.current.push({ id: 'safety-car', lapFloat: sc.lapFloat, lane: 0 });
+      const leader = order(race)[0];
+      // smooth the wetness over about a second so the light fades instead of stepping
+      const target = leader ? wetnessAt(race, leader.lapsDone + 1) : 0;
+      weatherRef.current += (target - weatherRef.current) * Math.min(1, frameDt * 1.5);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -139,7 +149,7 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
             <h2 className="panel-title">{roundLabel} | {track.name}</h2>
             <p className="label hidden sm:block">Scroll to zoom | click a driver to follow</p>
           </div>
-          <RaceView carsRef={carsRef} focusId={focusId} teams={teams} track={track} quality={quality} />
+          <RaceView carsRef={carsRef} weatherRef={weatherRef} focusId={focusId} teams={teams} track={track} quality={quality} />
         </section>
         <TimingTower snap={snap} focusId={focusId} onFocus={setFocusId} />
       </div>

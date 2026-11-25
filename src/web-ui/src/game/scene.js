@@ -289,3 +289,54 @@ export function buildCar(app, color, accent = '#111827') {
   return car;
 }
 export const clearCarMeshCache = () => carMeshCache.clear();
+
+/**
+ * Safety car: a white road car with an amber light bar, nose pointing +Z.
+ * Built fresh every time (no cache): PlayCanvas frees a mesh when its last
+ * entity is destroyed, so a cached mesh would be dead the next time the
+ * safety car comes out.
+ */
+export function buildSafetyCar(app) {
+  let safetyCarMesh = null;
+  {
+    const mb = new MeshBuilder();
+    mb.box({ pos: [0, 0.55, 0], scale: [1.9, 0.7, 4.4], color: '#f8fafc' });
+    mb.box({ pos: [0, 1.15, -0.3], scale: [1.6, 0.55, 2.2], color: '#1e293b' });
+    mb.box({ pos: [0, 1.48, -0.3], scale: [1.5, 0.08, 2.0], color: '#f8fafc' });
+    mb.box({ pos: [0, 1.6, -0.3], scale: [1.3, 0.16, 0.35], color: '#f59e0b' });
+    mb.box({ pos: [0, 0.62, 2.21], scale: [1.6, 0.25, 0.05], color: '#f59e0b' });
+    mb.box({ pos: [0, 0.3, 0], scale: [1.95, 0.15, 4.45], color: '#16a34a' });
+    for (const [x, z] of [[0.95, 1.4], [-0.95, 1.4], [0.95, -1.4], [-0.95, -1.4]]) {
+      mb.prism({ pos: [x, 0.35, z], radius: 0.35, height: 0.3, sides: 10, color: '#16171a', rot: [0, 0, 90] });
+    }
+    safetyCarMesh = mb.build(app.graphicsDevice);
+  }
+  const car = meshToEntity(safetyCarMesh, vertexColorMaterial(true), { name: 'safety-car' });
+  app.root.addChild(car);
+  return car;
+}
+
+/** Rain: thin streaks in one mesh, moved down and wrapped every frame. */
+export function buildRain(app) {
+  const mb = new MeshBuilder();
+  let a = 99;
+  const rnd = () => {
+    a = (a * 16807) % 2147483647;
+    return a / 2147483647;
+  };
+  for (let i = 0; i < 1600; i++) {
+    mb.box({ pos: [rnd() * 260 - 130, rnd() * 60, rnd() * 260 - 110], scale: [0.22, 3.2, 0.22], color: '#cfe8ff' });
+  }
+  const mat = new pc.StandardMaterial();
+  mat.diffuse = new pc.Color(0, 0, 0);
+  mat.emissive = new pc.Color(0.75, 0.85, 1);
+  mat.useLighting = false;
+  mat.blendType = pc.BLEND_NORMAL;
+  mat.opacity = 0.35;
+  mat.depthWrite = false;
+  mat.update();
+  const e = meshToEntity(mb.build(app.graphicsDevice), mat, { name: 'rain', castShadows: false, receiveShadows: false });
+  e.enabled = false;
+  app.root.addChild(e);
+  return { entity: e, material: mat };
+}

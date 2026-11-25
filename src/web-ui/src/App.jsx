@@ -68,7 +68,12 @@ function App() {
   };
 
   const calTrack = CALENDAR[Math.min(season.round, CALENDAR.length - 1)];
-  const track = useMemo(() => raceTrackOf(calTrack), [calTrack]);
+  // Test hook: ?rain=1 forces a rain spell in every race
+  const track = useMemo(() => {
+    const t = raceTrackOf(calTrack);
+    if (new URLSearchParams(window.location.search).get('rain') === '1') t.rainChance = 1;
+    return t;
+  }, [calTrack]);
   const table = useMemo(() => standings(season, GRID_TEAMS), [season]);
   const done = season.phase === 'done';
   // grid teams with this season's developed cars and budgets

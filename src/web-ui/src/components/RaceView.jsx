@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as pc from 'playcanvas';
 import { makeTrackPath } from '../game/trackPath';
-import { buildCircuit, buildCar, clearMaterialCache, clearCarMeshCache } from '../game/scene';
+import { buildCircuit, buildCar, buildSafetyCar, buildRain, clearMaterialCache, clearCarMeshCache } from '../game/scene';
 import { ENVIRONMENTS } from '../game/environments';
 
 const col = (hex, k = 1) => {
@@ -17,7 +17,7 @@ const col = (hex, k = 1) => {
  * Reading a ref (not props) keeps the cars moving smoothly between React renders,
  * and the PlayCanvas app is created once instead of on every prop change.
  */
-const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality = 'high' }) => {
+const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], track = null, quality = 'high' }) => {
   const canvasRef = useRef(null);
   const focusRef = useRef(focusId);
   useEffect(() => {
@@ -90,7 +90,37 @@ const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality =
     app.root.addChild(sun);
 
     const path = makeTrackPath(track?.points);
-    buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3 });
+    const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3 });
+
+    // Weather: rain streaks, dimmer greyer light, glossy wet asphalt
+    const rain = buildRain(app);
+    const asphaltMat = circuit.findByName('asphalt')?.render?.meshInstances?.[0]?.material || null;
+    const dryAsphalt = asphaltMat ? { diffuse: asphaltMat.diffuse.clone(), gloss: asphaltMat.gloss } : null;
+    const drySky = col(theme.sky);
+    const wetSky = col('#5b6676');
+    const dryAmbient = col(theme.ambient, theme.ambientLevel * 2.2);
+    let shownWet = -1;
+    let rainT = 0;
+    const applyWeather = (w, dt) => {
+      rainT += dt;
+      rain.entity.enabled = w > 0.04;
+      if (rain.entity.enabled) {
+        rain.entity.setLocalPosition(0, -((rainT * (35 + w * 25)) % 60), 0);
+      }
+      if (Math.abs(w - shownWet) < 0.02) return;
+      shownWet = w;
+      rain.material.opacity = 0.2 + w * 0.5;
+      rain.material.update();
+      sun.light.intensity = theme.sun.intensity * (1 - 0.55 * w);
+      const sky = new pc.Color().lerp(drySky, wetSky, Math.min(1, w * 1.4));
+      camera.camera.clearColor = sky;
+      app.scene.ambientLight = new pc.Color().lerp(dryAmbient, col('#6b7280', 0.9), w * 0.6);
+      if (asphaltMat && dryAsphalt) {
+        asphaltMat.gloss = dryAsphalt.gloss + w * 0.55;
+        asphaltMat.diffuse = new pc.Color().lerp(dryAsphalt.diffuse, col('#1a1d22'), w * 0.7);
+        asphaltMat.update();
+      }
+    };
 
     // Auto-fit: project the track into the camera's view plane and size the
     // orthographic view so the whole circuit fits the canvas, whatever its shape.
@@ -131,7 +161,7 @@ const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality =
         seen.add(c.id);
         let ent = carEntities.get(c.id);
         if (!ent) {
-          ent = buildCar(app, c.color, c.accent);
+          ent = c.id === 'safety-car' ? buildSafetyCar(app) : buildCar(app, c.color, c.accent);
           carEntities.set(c.id, ent);
         }
         // ease toward the wanted lane so cars swing out smoothly instead of jumping
@@ -147,6 +177,8 @@ const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality =
           carEntities.delete(id);
         }
       });
+
+      applyWeather(weatherRef?.current || 0, dt);
 
       // Smooth zoom; when zoomed in, the camera slides toward the focused car
       const cam = camera.camera;
@@ -171,7 +203,7 @@ const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality =
       clearCarMeshCache();
       if (window.__zetrace?.app === app) delete window.__zetrace;
     };
-  }, [carsRef, teams, track, quality]);
+  }, [carsRef, weatherRef, teams, track, quality]);
 
   return (
     <div className="relative">

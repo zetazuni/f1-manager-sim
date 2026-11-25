@@ -83,6 +83,38 @@ export function run() {
   const avgPos = (r) => r.snap.rows.filter((x) => x.isPlayer).reduce((a, x) => a + x.pos, 0) / 2;
   stats.push({ neutralAvgPos: avgPos(neutral), overtakeLeanAvgPos: avgPos(attack) });
 
+  // Rain: force a wet race and check that teams react and that it costs time
+  const wetStats = [];
+  let scBunchChecks = 0;
+  let scBunchFails = 0;
+  for (const seed of [31, 32, 33, 34, 35, 36]) {
+    const track = { ...raceTrackOf(CALENDAR[5]), rainChance: 1 };
+    const race = createRace({ teams: GRID_TEAMS, track, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
+    race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true }));
+    startRace(race);
+    let guard = 0;
+    let checkedSc = null;
+    while (!race.over && guard++ < 200000) {
+      step(race, 0.5);
+      const leader = race.cars.filter((c) => !c.dnf && !c.finished).sort((a, b) => b.lapsDone - a.lapsDone || a.lapStart - b.lapStart)[0];
+      if (race.sc && leader && checkedSc !== race.sc && leader.lapsDone >= race.sc.startLap + 2) {
+        checkedSc = race.sc;
+        scBunchChecks++;
+        const sameLap = race.cars.filter((c) => !c.dnf && !c.finished && c.lapsDone === leader.lapsDone).sort((a, b) => a.lapStart - b.lapStart);
+        const spread = sameLap.length > 1 ? sameLap[Math.min(9, sameLap.length - 1)].lapStart - sameLap[0].lapStart : 0;
+        if (spread > 14) scBunchFails++;
+      }
+    }
+    ok(race.over, `wet seed ${seed}: race never ended`);
+    const rain = race.weather.rain;
+    ok(!!rain, `wet seed ${seed}: no rain generated with rainChance 1`);
+    const wetUsers = race.cars.filter((c) => c.compoundsUsed.some((k) => k === 'I' || k === 'W')).length;
+    if (rain && rain.peak > 0.45) ok(wetUsers >= 12, `wet seed ${seed}: only ${wetUsers} cars fitted wet tyres (peak ${rain.peak.toFixed(2)})`);
+    wetStats.push({ seed, peak: rain && +rain.peak.toFixed(2), start: rain && rain.start, wetUsers, safetyCars: race.scCount, crashes: race.cars.filter((c) => c.dnf === 'Crashed').length });
+  }
+  ok(scBunchFails === 0, `${scBunchFails}/${scBunchChecks} safety car periods did not bunch the field`);
+  stats.push({ wet: wetStats, scBunchChecks });
+
   // A full season on every calendar circuit, engineer running the player's cars
   let season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: PLAYER_TEAM_ID, seed: 5 });
   const perTrack = [];

@@ -68,13 +68,18 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Zetrace favicon.
 - Test: `tools/checks/m6-save.json` reloads the page twice to prove the career and settings survive, runs the start lights and the career reset.
 
-## M7 Race day drama (NEXT)
+## M7 Race day drama (DONE, 2026-11-26)
 
-- Weather: dry, cloudy, rain chance per circuit; intermediate and wet tyres; rain visible in 3D (darker light, wet track sheen, rain streaks).
-- Safety car after crashes: field bunches up, cheap pit stops under the safety car.
-- Driver errors: small mistakes and occasional crashes depending on consistency and conditions.
+- Weather (`makeWeather` in `raceSim.js`): each circuit has a rain chance (desert 5 % to alpine 45 %). A rain spell ramps up over 3 laps, holds, and dries over 6; peak wetness varies. The radar forecast is a few laps off on purpose.
+- Tyres (`tyres.js`): Intermediate and Wet compounds. Each tyre has an ideal wetness with a quadratic penalty away from it, giving real crossovers (slick to inter at about 26 % wetness, inter to wet at about 83 %). Wet tyres overheat on a dry track. Using a wet tyre satisfies the two-compound rule. Wet-weather skill uses driver adaptability.
+- AI looks two laps ahead and switches tyre family when it is clearly faster.
+- Driver errors: spins (6 to 12 s) and crashes, more likely for inconsistent drivers, in the wet and on the wrong tyre.
+- Safety car after crashes (75 %) or a car stopped on track (30 %): 3 to 5 laps, the field closes up to 0.8 s gaps, no overtaking, pit stops cost 55 %. About a third of races see one.
+- 3D: safety car model (white, amber light bar) leads the pack; rain streaks, darker and greyer light, glossy wet asphalt, fading over about a second.
+- UI: safety car banner and SC badge in the tower, weather strip (conditions, wetness, radar forecast), Box for Inter / Wet buttons, rain chance on the track card. Radio warnings for rain and wrong tyres.
+- Tests: forced-rain races (every car must switch to wet tyres when it is properly wet), safety car bunching check; `tools/checks/m7-weather.json` (`?rain=1` test hook).
 
-## M8 Driver market and contracts (LATER)
+## M8 Driver market and contracts (NEXT)
 
 - Driver contracts with lengths and salaries; offers at the end of a season; AI teams sign drivers too.
 - Multi-season careers: new season keeps cars (with a regulation reset), budgets and contracts.

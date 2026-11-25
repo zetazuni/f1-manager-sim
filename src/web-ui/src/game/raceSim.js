@@ -8,7 +8,7 @@
 // of a lap play out visibly on the 3D track during that lap.
 
 import { POINTS } from '../data/grid';
-import { COMPOUNDS, wearPerLap, tyreDelta } from './tyres';
+import { COMPOUNDS, wearPerLap, tyreDelta, bestFamily, familyOf, conditionDelta } from './tyres';
 import { makeTrackPath, pitLayout } from './trackPath';
 
 export const ERS = { Neutral: 'Neutral', Attack: 'Attack', Overtake: 'Overtake' };
@@ -20,6 +20,38 @@ const GRID_SLOT_TIME = 0.25; // s: lap-1 time lost per grid slot
 // Battery change per lap (0-100). A flat battery means Neutral pace.
 const BATTERY_PER_LAP = { Neutral: 12, Attack: -9, Overtake: -28 };
 const TWO_COMPOUND_PENALTY = 10; // s added at the finish if only one compound was used
+const SC_PACE = 1.35; // safety car lap = 1.35 x reference lap
+const SC_GAP = 0.8; // s between cars in the safety car queue
+const SC_PIT_FACTOR = 0.55; // pit lane loss under the safety car
+const WET_GRIP_LOSS = 6; // s per lap at full wetness, whatever the tyre
+
+/**
+ * Weather for the whole race, decided up front: wetness (0-1) for each lap.
+ * With probability track.rainChance a rain spell arrives somewhere in the
+ * race, ramps up over 3 laps, holds, then dries out over ~6 laps.
+ */
+export function makeWeather(track, rng) {
+  const laps = track.totalLaps;
+  const wet = new Array(laps + 3).fill(0);
+  let rain = null;
+  if (rng() < (track.rainChance ?? 0)) {
+    const start = Math.max(3, Math.round(laps * (0.12 + rng() * 0.55)));
+    const length = 8 + Math.round(rng() * 16);
+    const peak = 0.35 + rng() * 0.6;
+    for (let l = 0; l < wet.length; l++) {
+      let k = 0;
+      if (l >= start && l < start + 3) k = (l - start + 1) / 3;
+      else if (l >= start + 3 && l < start + length) k = 1;
+      else if (l >= start + length && l < start + length + 6) k = 1 - (l - start - length + 1) / 6;
+      wet[l] = +(peak * k).toFixed(3);
+    }
+    rain = { start, length, peak, forecastFrom: start + Math.round((rng() - 0.5) * 6) };
+  }
+  return { wet, rain };
+}
+
+/** Track wetness on a given lap (1-based). */
+export const wetnessAt = (race, lap) => race.weather.wet[Math.max(0, Math.min(race.weather.wet.length - 1, lap))] || 0;
 
 /** Small seeded RNG so a race can be replayed in tests. */
 export function makeRng(seed = Date.now()) {
@@ -113,8 +145,11 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
   });
 
   const path = makeTrackPath(track.points);
+  const weather = makeWeather(track, rng);
   const race = {
-    track, engine, rng, cars,
+    track, engine, rng, cars, weather,
+    sc: null, // { endLap } while the safety car is out
+    scCount: 0,
     trackLength: path.total,
     pit: pitLayout(path.total),
     time: 0,
@@ -143,7 +178,7 @@ export function startRace(race) {
   resolveTraffic(race, race.cars);
 }
 
-const ctxFor = (race, c) => ({ track: race.track, driver: c.driver, ersMode: effectiveErs(c), fuelMode: c.fuelMode });
+const ctxFor = (race, c) => ({ track: race.track, driver: c.driver, ersMode: effectiveErs(c), fuelMode: c.fuelMode, wetness: wetnessAt(race, c.lapsDone + 1) });
 
 /** ERS mode actually used this lap: needs battery charge. */
 export function effectiveErs(c) {
@@ -153,10 +188,13 @@ export function effectiveErs(c) {
 
 function nextLapTime(race, c) {
   const { engine, track } = race;
-  // engine with fresh Mediums = base pace; the tyre model adds compound + wear
+  // engine with fresh Mediums = base pace; the tyre model adds compound, wear and wetness
+  const w = wetnessAt(race, c.lapsDone + 1);
+  // wet-weather skill: experienced, adaptable drivers lose less in the wet
+  const wetSkill = 1.15 - (c.driver.adaptability ?? 85) / 400;
   return engine.calculateLapTime(
     track, c.team, c.driver, c.lapsDone + 1, c.fuel, 'Medium', 0, effectiveErs(c), c.fuelMode,
-  ) + tyreDelta(c.compound, c.tireWear);
+  ) + tyreDelta(c.compound, c.tireWear, w) + w * WET_GRIP_LOSS * wetSkill;
 }
 
 /** Simple AI: spend battery on Attack when it is well charged, and plan pit stops. */
@@ -165,8 +203,23 @@ function aiStrategy(race, c, lapsLeft) {
   if (c.ersMode === ERS.Neutral && c.battery >= 70) c.ersMode = ERS.Attack;
   else if (c.ersMode === ERS.Attack && c.battery <= 20) c.ersMode = ERS.Neutral;
 
-  if (lapsLeft <= 2 || c.pitRequest) return;
-  const needsOther = new Set(c.compoundsUsed).size < 2;
+  if (lapsLeft <= 1 || c.pitRequest) return;
+  // Weather call: look two laps ahead and switch family when it is clearly faster
+  const lapNo = c.lapsDone;
+  const wSoon = Math.max(wetnessAt(race, lapNo + 1), wetnessAt(race, lapNo + 2));
+  const wNow = wetnessAt(race, lapNo + 1);
+  const target = bestFamily(wSoon > wNow ? wSoon : wNow);
+  const mine = familyOf(c.compound);
+  if (target !== mine) {
+    const gain = conditionDelta(c.compound, wNow) - conditionDelta(target === 'dry' ? 'M' : target, wNow);
+    if (gain > 0.8 || (wSoon > 0.3 && mine === 'dry')) {
+      c.pitRequest = target === 'dry' ? chooseCompound(race, c, lapsLeft) : target;
+      return;
+    }
+  }
+  if (mine !== 'dry') return; // on wet tyres: no dry strategy until it dries
+  if (lapsLeft <= 2) return;
+  const needsOther = new Set(c.compoundsUsed).size < 2 && !c.compoundsUsed.some((k) => COMPOUNDS[k].wet);
   const worn = c.tireWear >= c.aiWearLimit;
   const ruleDeadline = needsOther && lapsLeft <= 6;
   // would the current set make it to the flag?
@@ -315,7 +368,7 @@ function completeLap(race, c, track) {
     }
     c.finished = true;
     c.finishTime = crossAt;
-    if (new Set(c.compoundsUsed).size < 2) {
+    if (new Set(c.compoundsUsed).size < 2 && !c.compoundsUsed.some((k) => COMPOUNDS[k].wet)) {
       c.penalty = TWO_COMPOUND_PENALTY;
       log(race, lapNo, c.isPlayer ? 'danger' : 'info', `${c.driver.name}: ${TWO_COMPOUND_PENALTY} s penalty, only one tyre compound used.`, [c.id]);
     }
@@ -331,6 +384,7 @@ function completeLap(race, c, track) {
   const failChance = (1 - c.team.car.reliability) * 0.004;
   if (race.rng() < failChance) {
     retire(race, c, race.rng() < 0.5 ? 'Power unit failure' : 'Hydraulics', lapNo);
+    if (race.rng() < 0.3) deploySafetyCar(race, lapNo, `${c.driver.name} has stopped on track`);
     return;
   }
   // Radio warnings for the player
@@ -346,28 +400,97 @@ function completeLap(race, c, track) {
   }
 
   const lapsLeft = track.totalLaps - lapNo;
-  // Tyre warnings and punctures
   let extra = 0;
+  // Driver errors: more likely for inconsistent drivers, in the wet, and on the wrong tyre
+  const w = wetnessAt(race, lapNo);
+  const wrongTyre = (familyOf(c.compound) === 'dry' && w > 0.35) || (COMPOUNDS[c.compound].wet && w < 0.08);
+  const errChance = (1 - c.driver.consistency / 100) * (0.015 + w * 0.05) * (wrongTyre ? 3 : 1) * (race.sc ? 0.2 : 1);
+  if (race.rng() < errChance) {
+    if (race.rng() < 0.35) {
+      retire(race, c, 'Crashed', lapNo);
+      if (race.rng() < 0.75) deploySafetyCar(race, lapNo, `${c.driver.name} is in the barrier`);
+      return;
+    }
+    extra += 6 + race.rng() * 6;
+    log(race, lapNo, c.isPlayer ? 'danger' : 'warning', `${c.driver.name} spins${w > 0.2 ? ' on the wet track' : ''} and loses time!`, [c.id]);
+  }
+  // Tyre warnings and punctures
   if (c.tireWear > 0.9 && race.rng() < (c.tireWear - 0.9) * 1.5) {
     log(race, lapNo, c.isPlayer ? 'danger' : 'warning', `Puncture for ${c.driver.name}! Limping back to the pits.`, [c.id]);
     extra = 14;
-    c.pitRequest = c.pitRequest || chooseCompound(race, c, lapsLeft);
+    c.pitRequest = c.pitRequest || (bestFamily(w) === 'dry' ? chooseCompound(race, c, lapsLeft) : bestFamily(w));
   } else if (c.isPlayer && c.tireWear > 0.7 && !c.tyreWarned) {
     c.tyreWarned = true;
     log(race, lapNo, 'warning', `${c.driver.name}: these ${COMPOUNDS[c.compound].name}s are going off. Box soon.`, [c.id]);
   }
-  if (c.isPlayer && lapsLeft === 12 && new Set(c.compoundsUsed).size < 2) {
+  if (c.isPlayer) {
+    const rain = race.weather.rain;
+    if (rain && lapNo === Math.max(1, rain.forecastFrom - 4) && !race.rainWarned) {
+      race.rainWarned = true;
+      log(race, lapNo, 'warning', `Radar: rain expected in about 4 laps.`, [c.id]);
+    }
+    const wNext = wetnessAt(race, lapNo + 1);
+    if (familyOf(c.compound) !== bestFamily(wNext) && !c.weatherWarned) {
+      c.weatherWarned = true;
+      const fam = bestFamily(wNext);
+      log(race, lapNo, 'warning', fam === 'dry'
+        ? `${c.driver.name}: the track is drying, slicks are faster now.`
+        : `${c.driver.name}: it is too wet for these tyres, ${COMPOUNDS[fam].name}s are faster.`, [c.id]);
+    } else if (familyOf(c.compound) === bestFamily(wNext)) {
+      c.weatherWarned = false;
+    }
+  }
+  if (c.isPlayer && lapsLeft === 12 && new Set(c.compoundsUsed).size < 2 && !c.compoundsUsed.some((k) => COMPOUNDS[k].wet)) {
     log(race, lapNo, 'warning', `${c.driver.name}: remember we still have to run a second compound.`, [c.id]);
   }
 
   aiStrategy(race, c, lapsLeft);
   if (c.pitRequest) extra += pitStop(race, c, lapNo);
+
+  // Safety car: the leader ends it after its last lap behind the car
+  const isLeader = order(race).filter((o) => !o.dnf)[0] === c;
+  if (race.sc && isLeader && lapNo >= race.sc.endLap) {
+    race.sc = null;
+    log(race, lapNo, 'success', 'Safety car in this lap. Green flag, racing resumes!');
+  }
   c.lapTime = nextLapTime(race, c) + extra;
-  resolveTraffic(race, [c]);
+  if (race.sc) {
+    scPace(race, c, extra);
+  } else {
+    resolveTraffic(race, [c]);
+  }
+}
+
+/** Under the safety car: slow leader, the rest close up to SC_GAP behind the car ahead. */
+function scPace(race, c, extra) {
+  const scLap = race.track.baseLapTime * SC_PACE + extra;
+  const sameLap = race.cars
+    .filter((o) => !o.dnf && !o.finished && o.lapsDone === c.lapsDone && o !== c && o.lapStart <= c.lapStart)
+    .sort((x, y) => y.lapStart - x.lapStart);
+  const ahead = sameLap[0];
+  if (!ahead) {
+    c.lapTime = scLap;
+    return;
+  }
+  const aheadEnd = ahead.lapStart + ahead.lapTime;
+  // catch up at racing speed (but never faster than a normal lap), never pass
+  const fastest = c.lapTime * 0.98;
+  c.lapTime = Math.max(fastest, aheadEnd + SC_GAP - c.lapStart);
+  c.passing = null;
+}
+
+export function deploySafetyCar(race, lapNo, reason) {
+  if (race.sc) return;
+  const leader = order(race).filter((o) => !o.dnf)[0];
+  const leaderLap = leader ? leader.lapsDone : lapNo;
+  if (race.track.totalLaps - leaderLap < 4) return; // too late in the race
+  race.sc = { startLap: leaderLap, endLap: leaderLap + 3 + Math.floor(race.rng() * 3), reason };
+  race.scCount += 1;
+  log(race, lapNo, 'danger', `SAFETY CAR: ${reason}.`, []);
 }
 
 function pitStop(race, c, lapNo) {
-  const loss = race.track.pitLoss ?? 20;
+  const loss = (race.track.pitLoss ?? 20) * (race.sc ? SC_PIT_FACTOR : 1);
   const slow = race.rng() < 0.04;
   const stop = 2.2 + race.rng() * 0.8 + (slow ? 4 + race.rng() * 3 : 0);
   const from = c.compound;
@@ -419,6 +542,14 @@ export function carPose(race, c) {
   return { lapFloat: c.lapsDone + frac, inPit: false };
 }
 
+/** Where the safety car is (just ahead of the leader), or null when it is in. */
+export function safetyCarPose(race) {
+  if (!race.sc) return null;
+  const leader = order(race).filter((o) => !o.dnf && !o.finished)[0];
+  if (!leader) return null;
+  return { lapFloat: carPose(race, leader).lapFloat + 12 / race.trackLength };
+}
+
 /** Lap distance only, for callers that do not need the pit flag. */
 export const lapFloat = (race, c) => carPose(race, c).lapFloat;
 
@@ -433,6 +564,10 @@ export function snapshot(race) {
     leaderLap: Math.min(race.track.totalLaps, leader ? leader.lapsDone + (race.leaderFinished ? 0 : 1) : 0),
     totalLaps: race.track.totalLaps,
     fastest: race.fastest,
+    safetyCar: !!race.sc,
+    wetness: leader ? wetnessAt(race, leader.lapsDone + 1) : 0,
+    rainForecast: race.weather.rain && leader && leader.lapsDone < race.weather.rain.start
+      ? { from: race.weather.rain.forecastFrom } : null,
     events: race.events.slice(-8).reverse(),
     rows: ordered.map((c, i) => {
       let gap;
