@@ -59,8 +59,22 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Team HQ tab: budget, car rating and rank, factory slots, sponsor objective, bullet chart of our car vs grid best and average (with table view and hover details; series colour validated with the dataviz validator), projects in progress, upgrade catalogue, ledger.
 - Tests: season test buys upgrades and checks budgets, ledger, ceiling and that cars improve; `tools/checks/m5-hq.json` buys upgrades in the real app and races a round.
 
-## M6 Save, settings and polish (NEXT)
+## M6 Save, settings and polish (DONE, 2026-11-26)
 
-- Save/load career in localStorage.
-- Settings (sound, quality), audio pass, mobile layout check.
-- Deploy only when asked (Netlify costs credits).
+- Career autosave in localStorage (`src/game/storage.js`) after every change, with a version check and a migration for older saves. A save taken during a race resumes on the grid.
+- Settings dialog (gear in the header): graphics quality (High / Medium / Low: shadows, shadow resolution, pixel ratio), sound on/off, default race speed, and a two-step career reset inside the dialog. Settings are kept in their own storage key.
+- Start sequence: five red lights with beeps, a random hold, then lights out.
+- Audio: one shared AudioContext (the old code made a new one per click, which browsers cap), new light, lights-out and radio sounds, all synthesised in code.
+- Zetrace favicon.
+- Test: `tools/checks/m6-save.json` reloads the page twice to prove the career and settings survive, runs the start lights and the career reset.
+
+## M7 Race day drama (NEXT)
+
+- Weather: dry, cloudy, rain chance per circuit; intermediate and wet tyres; rain visible in 3D (darker light, wet track sheen, rain streaks).
+- Safety car after crashes: field bunches up, cheap pit stops under the safety car.
+- Driver errors: small mistakes and occasional crashes depending on consistency and conditions.
+
+## M8 Driver market and contracts (LATER)
+
+- Driver contracts with lengths and salaries; offers at the end of a season; AI teams sign drivers too.
+- Multi-season careers: new season keeps cars (with a regulation reset), budgets and contracts.

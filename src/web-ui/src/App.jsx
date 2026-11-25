@@ -1,14 +1,17 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import RaceScreen from './components/RaceScreen';
 import StandingsView from './components/StandingsView';
 import CalendarView from './components/CalendarView';
 import FactoryView from './components/FactoryView';
+import SettingsDialog from './components/SettingsDialog';
 import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
 import { CALENDAR } from './data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
 import { startProject, teamsWithCars } from './game/factory';
+import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
+import { setSoundEnabled } from './services/AudioManager';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -17,22 +20,52 @@ const TABS = [
   { id: 'calendar', label: 'Calendar' },
 ];
 
+// Test hook: ?round=N opens round N (1-based) of a fresh season, ignoring any save
+const testRound = () => {
+  const r = Number(new URLSearchParams(window.location.search).get('round'));
+  return r >= 1 && r <= CALENDAR.length ? r : null;
+};
+
 const newSeason = () => {
   const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: PLAYER_TEAM_ID });
-  // Test hook: ?round=N opens round N (1-based) to check a circuit quickly
-  const r = Number(new URLSearchParams(window.location.search).get('round'));
-  if (r >= 1 && r <= CALENDAR.length) season.round = r - 1;
+  const r = testRound();
+  if (r) season.round = r - 1;
   return season;
 };
 
+/** Saved career when there is one (and no test hook), otherwise a new season. */
+const initialCareer = () => {
+  const saved = testRound() ? null : loadCareer({ teams: GRID_TEAMS, playerTeamId: PLAYER_TEAM_ID });
+  return saved ? { season: saved.season, modes: saved.modes || null } : { season: newSeason(), modes: null };
+};
+
 function App() {
-  const [season, setSeason] = useState(newSeason);
+  const [boot] = useState(initialCareer);
+  const [season, setSeason] = useState(boot.season);
   const [tab, setTab] = useState('weekend');
-  const [speed, setSpeed] = useState(1);
-  const [quality] = useState('high');
+  const [settings, setSettings] = useState(loadSettings);
+  const [speed, setSpeed] = useState(settings.speed);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const playerTeam = GRID_TEAMS.find((t) => t.id === PLAYER_TEAM_ID);
   const playerCars = playerTeam.drivers.map((d, i) => ({ carId: `${PLAYER_TEAM_ID}-${i}`, name: d.name }));
-  const [modes, setModes] = useState(() => Object.fromEntries(playerCars.map((p) => [p.carId, QUALI_MODE.Safe])));
+  const defaultModes = () => Object.fromEntries(playerCars.map((p) => [p.carId, QUALI_MODE.Safe]));
+  const [modes, setModes] = useState(() => boot.modes || defaultModes());
+
+  // Autosave the career whenever it changes
+  useEffect(() => {
+    saveCareer({ season, modes });
+  }, [season, modes]);
+  // Persist settings and apply sound
+  useEffect(() => {
+    saveSettings(settings);
+    setSoundEnabled(settings.sound);
+  }, [settings]);
+  // patch = only the changed fields; merged into the latest settings so quick
+  // successive changes never overwrite each other
+  const changeSettings = (patch) => {
+    if (patch.speed !== undefined) setSpeed(patch.speed);
+    setSettings((cur) => ({ ...cur, ...patch }));
+  };
 
   const calTrack = CALENDAR[Math.min(season.round, CALENDAR.length - 1)];
   const track = useMemo(() => raceTrackOf(calTrack), [calTrack]);
@@ -69,6 +102,13 @@ function App() {
   const restartSeason = () => {
     setSeason(newSeason());
     setTab('weekend');
+  };
+  const resetCareer = () => {
+    clearCareer();
+    setSeason(newSeason());
+    setModes(defaultModes());
+    setTab('weekend');
+    setSettingsOpen(false);
   };
 
   const roundLabel = `Round ${season.round + 1}/${CALENDAR.length}`;
@@ -112,6 +152,19 @@ function App() {
               <p className="label">{done ? 'Season complete' : roundLabel}</p>
               <p className="font-display text-sm font-bold uppercase tracking-wider">{done ? 'Final standings' : calTrack.name}</p>
             </div>
+            <button
+              type="button"
+              aria-label="Settings"
+              title="Settings"
+              data-testid="settings-open"
+              onClick={() => setSettingsOpen(true)}
+              className="grid h-9 w-9 place-items-center rounded-lg border border-line-2 bg-panel-2 text-slate-300 hover:bg-line-2 hover:text-white"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
@@ -166,12 +219,20 @@ function App() {
               roundLabel={roundLabel}
               speed={speed}
               onSpeed={setSpeed}
-              quality={quality}
+              quality={settings.quality}
               onFinished={onFinished}
             />
           </div>
         )}
       </main>
+
+      <SettingsDialog
+        open={settingsOpen}
+        settings={settings}
+        onChange={changeSettings}
+        onClose={() => setSettingsOpen(false)}
+        onResetCareer={resetCareer}
+      />
     </div>
   );
 }
