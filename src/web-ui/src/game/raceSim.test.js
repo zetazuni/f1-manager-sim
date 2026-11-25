@@ -8,7 +8,7 @@ import { createRace, startRace, step, snapshot, lapFloat, setStrategy, setTeamOr
 import { CALENDAR } from '../data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
 import { teamsWithCars, startProject, carRating } from './factory';
-import { teamsForSeason, startOffSeason, signDriver, finishOffSeason, marketList } from './career';
+import { teamsForSeason, startOffSeason, signDriver, finishOffSeason, marketList, updateMorale, withMorale } from './career';
 
 function runRace(seed, tweak) {
   const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
@@ -255,6 +255,22 @@ export function run() {
   ok(snapshot(r2).rows.some((r) => r.name === target.name), 'new signing did not race');
   season2 = recordRace(season2, CALENDAR[0].id, snapshot(r2).rows, r2.fastest?.carId, t2);
   ok(Number.isFinite(season2.teams[PLAYER_TEAM_ID].budget), 'budget broke in season 2');
+  // Morale
+  const morales = Object.values(season2.career.drivers).map((d) => d.morale);
+  ok(morales.every((m) => m >= 0 && m <= 100), 'morale out of range');
+  ok((season2.moraleChanges || []).some((m) => m.after !== m.before), 'morale never changed after a race');
+  const rowsNow = snapshot(r2).rows;
+  const base = structuredClone(season2);
+  const withSwap = structuredClone(season2);
+  updateMorale(base, t2, rowsNow, []);
+  updateMorale(withSwap, t2, rowsNow, [{ yielded: 'zetrace-0', gained: 'zetrace-1' }]);
+  const idOf = (sea, seat) => sea.career.lineups.zetrace[seat];
+  ok(withSwap.career.drivers[idOf(withSwap, 0)].morale < base.career.drivers[idOf(base, 0)].morale, 'yielding driver should lose morale');
+  ok(withSwap.career.drivers[idOf(withSwap, 1)].morale > base.career.drivers[idOf(base, 1)].morale, 'driver let through should gain morale');
+  const happy = withMorale({ ...GRID_TEAMS[0].drivers[0], morale: 95 });
+  const sad = withMorale({ ...GRID_TEAMS[0].drivers[0], morale: 15 });
+  ok(happy.consistency > sad.consistency && happy.pace > sad.pace, 'morale should change consistency and pace');
+
   stats.push({ career: { year2: season2.career.year, signed: target.name, spreadBefore: +spreadBefore.toFixed(2), spreadAfter: +spread(season2).toFixed(2), retired: off.offseasonNews } });
 
   return { pass: failures.length === 0, failures, stats };

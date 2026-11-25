@@ -10,6 +10,7 @@
 import { POINTS } from '../data/grid';
 import { COMPOUNDS, wearPerLap, tyreDelta, bestFamily, familyOf, conditionDelta } from './tyres';
 import { makeTrackPath, pitLayout, makeTimeProfile } from './trackPath';
+import { withMorale } from './career';
 
 export const ERS = { Neutral: 'Neutral', Attack: 'Attack', Overtake: 'Overtake' };
 export const FUEL = { Lean: 'Lean', Standard: 'Standard', Rich: 'Rich' };
@@ -92,7 +93,8 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
     team.drivers.forEach((driver, i) => {
       cars.push({
         id: `${team.id}-${i}`,
-        driver,
+        driver: withMorale(driver), // morale nudges consistency and pace for this race
+        morale: driver.morale ?? 65,
         team,
         color: team.color,
         accent: team.accent,
@@ -161,6 +163,7 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
     track, engine, rng, cars, weather,
     teamOrders: {}, // teamId -> 'race' | 'hold'
     swaps: {}, // teamId -> true when the car ahead should let its teammate by
+    swapLog: [], // { yielded, gained } car ids, for morale after the race
     sc: null, // { endLap } while the safety car is out
     scCount: 0,
     trackLength: path.total,
@@ -290,6 +293,7 @@ function resolveTraffic(race, starters) {
         delete race.swaps[c.team.id];
         const myEnd = c.lapStart + c.lapTime;
         mate.lapTime = Math.max(mate.lapTime, myEnd + DIRTY_AIR_GAP + 0.3 - mate.lapStart);
+        race.swapLog.push({ yielded: mate.id, gained: c.id });
         log(race, c.lapsDone + 1, 'info', `Team orders: ${mate.driver.name} lets ${c.driver.name} through.`, [c.id, mate.id]);
       }
     }
@@ -620,6 +624,7 @@ export function snapshot(race) {
     fastest: race.fastest,
     safetyCar: !!race.sc,
     teamOrders: { ...race.teamOrders },
+    swapLog: race.swapLog.map((x) => ({ ...x })),
     swapPending: { ...race.swaps },
     wetness: leader ? wetnessAt(race, leader.lapsDone + 1) : 0,
     rainForecast: race.weather.rain && leader && leader.lapsDone < race.weather.rain.start
@@ -641,7 +646,7 @@ export function snapshot(race) {
         isPlayer: c.isPlayer, gap, lastLap: c.lastLap, bestLap: c.bestLap, lapsDone: c.lapsDone,
         fuel: c.fuel, fuelPerLap: race.engine.calculateFuelConsumption(race.track, c.fuelMode), battery: c.battery, tireWear: c.tireWear, ersMode: c.ersMode, fuelMode: c.fuelMode,
         dnf: c.dnf, finished: c.finished, grid: c.grid + 1,
-        compound: c.compound, tyreAge: c.tyreAge, autoAi: !!c.autoAi, practice: c.practice, stops: c.stops, pitRequest: c.pitRequest,
+        compound: c.compound, tyreAge: c.tyreAge, autoAi: !!c.autoAi, practice: c.practice, morale: c.morale, stops: c.stops, pitRequest: c.pitRequest,
         inPit: !!c.pitThisLap && race.time - c.lapStart < c.pitThisLap.loss + c.pitThisLap.stop,
         compoundsUsed: [...new Set(c.compoundsUsed.length ? c.compoundsUsed : [c.compound])], penalty: c.penalty,
         points: race.over && !c.dnf ? POINTS[i] || 0 : 0,

@@ -3,6 +3,7 @@ import { ERS, FUEL, formatLap } from '../game/raceSim';
 import { playClickSound } from '../services/AudioManager';
 import { COMPOUNDS, COMPOUND_KEYS, WET_KEYS } from '../game/tyres';
 import TyreBadge from './TyreBadge';
+import MoraleMeter from './MoraleMeter';
 
 const EVENT_COLOR = {
   danger: 'text-red-400',
@@ -49,7 +50,10 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
           <span className="font-display text-3xl font-bold italic leading-none">P{row.pos}</span>
           <span>
             <span className="block font-display text-lg font-bold uppercase leading-tight tracking-wide">{row.name}</span>
-            <span className="text-[11px] text-muted">from P{row.grid} {row.pos < row.grid ? `(+${row.grid - row.pos})` : ''}</span>
+            <span className="flex items-center gap-2 text-[11px] text-muted">
+              from P{row.grid} {row.pos < row.grid ? `(+${row.grid - row.pos})` : ''}
+              <MoraleMeter value={row.morale} compact />
+            </span>
           </span>
         </span>
         <span className="text-right font-mono text-xs text-slate-400">

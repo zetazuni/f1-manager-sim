@@ -5,7 +5,7 @@
 import { POINTS } from '../data/grid';
 import { makeRng } from './raceSim';
 import { createTeamStates, settleRound } from './factory';
-import { createCareer } from './career';
+import { createCareer, updateMorale } from './career';
 
 export const QUALI_MODE = { Safe: 'Safe', Push: 'Push' };
 const PUSH_GAIN = 0.25; // s found by pushing
@@ -74,7 +74,7 @@ export function runQualifying({ teams, track, engine, playerTeamId, modes = {}, 
  * Add a finished race (snapshot rows from raceSim) to the season. With `teams`
  * it also settles money and car development for the round (factory.js).
  */
-export function recordRace(season, trackId, rows, fastestCarId, teams = null) {
+export function recordRace(season, trackId, rows, fastestCarId, teams = null, swaps = []) {
   const next = structuredClone(season);
   const out = rows.map((r) => {
     let points = r.dnf ? 0 : POINTS[r.pos - 1] || 0;
@@ -92,6 +92,7 @@ export function recordRace(season, trackId, rows, fastestCarId, teams = null) {
   if (teams && next.teams) {
     const byId = new Map(out.map((r) => [r.carId, r]));
     settleRound(next, rows.map((r) => ({ id: r.id, pos: r.pos, grid: r.grid, dnf: r.dnf, points: byId.get(r.id)?.points || 0 })), teams);
+    next.moraleChanges = updateMorale(next, teams, rows, swaps);
   }
   return next;
 }

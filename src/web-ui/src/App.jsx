@@ -110,7 +110,7 @@ function App() {
   };
   const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
   const onFinished = useCallback((snap, fastestCarId) => {
-    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s)));
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s), snap.swapLog || []));
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
@@ -258,6 +258,7 @@ function App() {
                 isLast={season.round + 1 >= CALENDAR.length}
                 onNext={next}
                 nameOf={nameOf}
+                moraleChanges={season.moraleChanges || []}
               />
             )}
           </>

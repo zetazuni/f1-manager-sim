@@ -3,6 +3,7 @@ import TrackMap from './TrackMap';
 import { ENVIRONMENTS } from '../game/environments';
 import { QUALI_MODE } from '../game/season';
 import { formatLap, PRACTICE } from '../game/raceSim';
+import MoraleMeter from './MoraleMeter';
 
 const rating = (value, low, high) => {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
@@ -145,7 +146,7 @@ export const QualiPanel = ({ quali, track, onRace }) => {
   );
 };
 
-export const ResultsPanel = ({ result, track, table, teamsTable, isLast, onNext, nameOf }) => (
+export const ResultsPanel = ({ result, track, table, teamsTable, isLast, onNext, nameOf, moraleChanges = [] }) => (
   <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
     <div className="panel p-5">
       <h3 className="panel-title mb-4">Result | {track.name}</h3>
@@ -187,6 +188,22 @@ export const ResultsPanel = ({ result, track, table, teamsTable, isLast, onNext,
           </div>
         ))}
       </div>
+      {moraleChanges.filter((m) => nameOf(m.carId).isPlayer).length > 0 && (
+        <div className="panel p-5" data-testid="morale-changes">
+          <h3 className="panel-title mb-3">Morale after the race</h3>
+          {moraleChanges.filter((m) => nameOf(m.carId).isPlayer).map((m) => (
+            <div key={m.carId} className="flex items-center justify-between border-t border-line py-1.5 text-sm">
+              <span>{m.name}</span>
+              <span className="flex items-center gap-3">
+                <span className={`font-mono text-xs ${m.after >= m.before ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {m.after >= m.before ? '+' : ''}{m.after - m.before}
+                </span>
+                <MoraleMeter value={m.after} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <button type="button" data-testid="next-round" onClick={onNext} className="btn btn-primary w-full py-4 text-base">
         {isLast ? 'Season finale' : 'Next round'}
       </button>

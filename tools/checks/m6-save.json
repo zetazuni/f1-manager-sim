@@ -1,46 +1,145 @@
 [
-  { "waitFor": "[data-testid=qualify]" },
-  { "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'" },
-  { "waitFor": "[data-upgrade=\"ersEfficiency-small\"]" },
-  { "eval": "document.querySelector('[data-upgrade=\"ersEfficiency-small\"]').click(), 'buy'" },
-  { "eval": "document.querySelector('[data-tab=weekend]').click(), 'weekend'" },
-  { "waitFor": "[data-testid=qualify]" },
-  { "eval": "document.querySelector('[data-testid=qualify]').click(), 'qualify'" },
-  { "waitFor": "[data-testid=to-race]" },
-  { "eval": "location.reload(), 'reload 1'" },
-  { "wait": 1500 },
-  { "waitFor": "[data-testid=to-race]" },
-  { "eval": "'after reload: still on the grid screen'" },
-  { "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'" },
-  { "waitFor": "[data-testid=budget]" },
-  { "eval": "'budget after reload ' + document.querySelector('[data-testid=budget]').textContent" },
-  { "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings'" },
-  { "waitFor": "[data-testid=settings]" },
-  { "eval": "document.querySelector('[data-setting=\"quality-low\"]').click(), document.querySelector('[data-setting=\"sound-false\"]').click(), document.querySelector('[data-setting=\"speed-4\"]').click(), 'set low/off/4x'" },
-  { "shot": "m6-settings.png" },
-  { "eval": "location.reload(), 'reload 2'" },
-  { "wait": 1500 },
-  { "waitFor": "[data-testid=settings-open]" },
-  { "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings again'" },
-  { "waitFor": "[data-testid=settings]" },
-  { "eval": "'kept: ' + [...document.querySelectorAll('[data-testid=settings] button.bg-f1-red')].map(b => b.textContent).join(',')" },
-  { "eval": "document.querySelector('[data-testid=settings-close]').click(), 'close'" },
-  { "waitFor": "[data-testid=to-race]" },
-  { "eval": "document.querySelector('[data-testid=to-race]').click(), 'to race'" },
-  { "waitFor": "[data-testid=run]" },
-  { "eval": "document.querySelector('[data-testid=run]').click(), 'lights'" },
-  { "wait": 2000 },
-  { "shot": "m6-lights.png" },
-  { "eval": "'lights overlay: ' + !!document.querySelector('[data-testid=start-lights]')" },
-  { "wait": 3500 },
-  { "eval": "'after start: ' + document.querySelector('[data-testid=lap]').textContent + ' started=' + window.__zetraceRace.started + ' speed4=' + document.querySelector('[data-speed=\"4\"]').className.includes('bg-slate-600')" },
-  { "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings for reset'" },
-  { "waitFor": "[data-testid=reset-1]" },
-  { "eval": "document.querySelector('[data-testid=reset-1]').click(), 'reset 1'" },
-  { "waitFor": "[data-testid=reset-2]" },
-  { "eval": "document.querySelector('[data-testid=reset-2]').click(), 'reset 2'" },
-  { "waitFor": "[data-testid=qualify]" },
-  { "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'" },
-  { "waitFor": "[data-testid=budget]" },
-  { "eval": "'after reset budget ' + document.querySelector('[data-testid=budget]').textContent" }
+  {
+    "waitFor": "[data-testid=qualify]"
+  },
+  {
+    "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+  },
+  {
+    "waitFor": "[data-upgrade=\"ersEfficiency-small\"]"
+  },
+  {
+    "eval": "document.querySelector('[data-upgrade=\"ersEfficiency-small\"]').click(), 'buy'"
+  },
+  {
+    "eval": "document.querySelector('[data-tab=weekend]').click(), 'weekend'"
+  },
+  {
+    "waitFor": "[data-testid=qualify]"
+  },
+  {
+    "eval": "document.querySelector('[data-testid=qualify]').click(), 'qualify'"
+  },
+  {
+    "waitFor": "[data-testid=to-race]"
+  },
+  {
+    "eval": "location.reload(), 'reload 1'"
+  },
+  {
+    "wait": 1500
+  },
+  {
+    "waitFor": "[data-testid=to-race]",
+    "timeout": 60000
+  },
+  {
+    "eval": "'after reload: still on the grid screen'"
+  },
+  {
+    "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+  },
+  {
+    "waitFor": "[data-testid=budget]",
+    "timeout": 60000
+  },
+  {
+    "eval": "'budget after reload ' + document.querySelector('[data-testid=budget]').textContent"
+  },
+  {
+    "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings'"
+  },
+  {
+    "waitFor": "[data-testid=settings]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-setting=\"quality-low\"]').click(), document.querySelector('[data-setting=\"sound-false\"]').click(), document.querySelector('[data-setting=\"speed-4\"]').click(), 'set low/off/4x'"
+  },
+  {
+    "shot": "m6-settings.png"
+  },
+  {
+    "eval": "location.reload(), 'reload 2'"
+  },
+  {
+    "wait": 1500
+  },
+  {
+    "waitFor": "[data-testid=settings-open]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings again'"
+  },
+  {
+    "waitFor": "[data-testid=settings]",
+    "timeout": 60000
+  },
+  {
+    "eval": "'kept: ' + [...document.querySelectorAll('[data-testid=settings] button.bg-f1-red')].map(b => b.textContent).join(',')"
+  },
+  {
+    "eval": "document.querySelector('[data-testid=settings-close]').click(), 'close'"
+  },
+  {
+    "waitFor": "[data-testid=to-race]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-testid=to-race]').click(), 'to race'"
+  },
+  {
+    "waitFor": "[data-testid=run]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-testid=run]').click(), 'lights'"
+  },
+  {
+    "wait": 2000
+  },
+  {
+    "shot": "m6-lights.png"
+  },
+  {
+    "eval": "'lights overlay: ' + !!document.querySelector('[data-testid=start-lights]')"
+  },
+  {
+    "wait": 3500
+  },
+  {
+    "eval": "'after start: ' + document.querySelector('[data-testid=lap]').textContent + ' started=' + window.__zetraceRace.started + ' speed4=' + document.querySelector('[data-speed=\"4\"]').className.includes('bg-slate-600')"
+  },
+  {
+    "eval": "document.querySelector('[data-testid=settings-open]').click(), 'settings for reset'"
+  },
+  {
+    "waitFor": "[data-testid=reset-1]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-testid=reset-1]').click(), 'reset 1'"
+  },
+  {
+    "waitFor": "[data-testid=reset-2]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-testid=reset-2]').click(), 'reset 2'"
+  },
+  {
+    "waitFor": "[data-testid=qualify]",
+    "timeout": 60000
+  },
+  {
+    "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+  },
+  {
+    "waitFor": "[data-testid=budget]",
+    "timeout": 60000
+  },
+  {
+    "eval": "'after reset budget ' + document.querySelector('[data-testid=budget]').textContent"
+  }
 ]

@@ -106,8 +106,14 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Root README with features, how to run, and the checks.
 - Tests: practice is worth exactly 0.18 s on lap 1, hold gives zero teammate passes, swap flips the order; `tools/checks/m10-title.json`.
 
+## M11 Driver morale and the check suite (DONE, 2026-11-26)
+
+- Morale 0-100 per driver in the career. It shifts the race driver by up to +-5 consistency and +-1 pace (`withMorale`).
+- After each race (`updateMorale`): result against what the car rank should deliver, points, wins, crashes (mechanical DNFs barely count), team orders (yielding hurts, being let through pleases), then a drift back toward 65. A new contract lifts morale.
+- Morale meters on the race driver cards and in the driver market; "Morale after the race" on the results screen.
+- `tools/run-checks.mjs` runs track validation and every UI flow; all pass.
+
 ## Ideas for later
 
-- Driver morale and team orders consequences.
 - More circuits and a calendar that changes each year.
 - Replays of key moments, a broadcast-style camera.
