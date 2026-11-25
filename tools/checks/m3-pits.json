@@ -1,0 +1,16 @@
+[
+  { "wait": 3000 },
+  { "eval": "document.querySelector('[data-testid=driver-card] [data-pit=S]').click(), 'start on softs'" },
+  { "shot": "m3-grid.png" },
+  { "eval": "document.querySelector('[data-testid=run]').click(), 'go'" },
+  { "wait": 2500 },
+  { "eval": "document.querySelector('[data-testid=driver-card] [data-pit=H]').click(), 'box for hards'" },
+  { "eval": "new Promise(r => { const t0 = Date.now(); const i = setInterval(() => { const card = document.querySelector('[data-testid=driver-card]'); if (card.innerText.includes('IN PIT') || Date.now() - t0 > 20000) { clearInterval(i); r(card.innerText.includes('IN PIT') ? 'in pit' : 'never pitted'); } }, 50); })" },
+  { "eval": "document.querySelector('[data-speed=\"1\"]').click(); (() => { const c = document.querySelector('canvas'); for (let i = 0; i < 9; i++) c.dispatchEvent(new WheelEvent('wheel', {deltaY: -100, bubbles: true, cancelable: true})); return 'zoom'; })()" },
+  { "wait": 700 },
+  { "shot": "m3-pit.png" },
+  { "eval": "document.querySelector('[data-testid=driver-card]').innerText.split(String.fromCharCode(10)).slice(0,8).join(' | ')" },
+  { "eval": "document.querySelector('[data-speed=\"4\"]').click(), 'fast'" },
+  { "eval": "new Promise(r => { const t0 = Date.now(); const i = setInterval(() => { if (document.querySelector('[data-testid=classification]') || Date.now() - t0 > 90000) { clearInterval(i); r(document.querySelector('[data-testid=lap]').textContent); } }, 250); })" },
+  { "shot": "m3-result.png" }
+]

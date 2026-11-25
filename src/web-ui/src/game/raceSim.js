@@ -8,6 +8,7 @@
 // of a lap play out visibly on the 3D track during that lap.
 
 import { POINTS } from '../data/grid';
+import { COMPOUNDS, wearPerLap, tyreDelta } from './tyres';
 
 export const ERS = { Neutral: 'Neutral', Attack: 'Attack', Overtake: 'Overtake' };
 export const FUEL = { Lean: 'Lean', Standard: 'Standard', Rich: 'Rich' };
@@ -17,6 +18,9 @@ const GRID_SLOT_LAP = 0.006; // lap fraction between grid slots (shown in 3D)
 const GRID_SLOT_TIME = 0.25; // s: lap-1 time lost per grid slot
 // Battery change per lap (0-100). A flat battery means Neutral pace.
 const BATTERY_PER_LAP = { Neutral: 12, Attack: -9, Overtake: -28 };
+// Pit lane: runs alongside the main straight between these lap fractions
+export const PIT_LANE = { start: 0.02, end: 0.2, lateral: -9 };
+const TWO_COMPOUND_PENALTY = 10; // s added at the finish if only one compound was used
 
 /** Small seeded RNG so a race can be replayed in tests. */
 export function makeRng(seed = Date.now()) {
@@ -60,6 +64,15 @@ export function createRace({ teams, track, engine, playerTeamId, seed }) {
         fuel: 100,
         battery: 100,
         tireWear: 0,
+        compound: 'M',
+        tyreAge: 0,
+        compoundsUsed: [],
+        stops: 0,
+        pitRequest: null,
+        pitThisLap: null,
+        penalty: 0,
+        aiWearLimit: 0,
+        teamIndex: teams.indexOf(team),
         lapsDone: 0,
         lapStart: 0,
         lapTime: 0,
@@ -86,6 +99,15 @@ export function createRace({ teams, track, engine, playerTeamId, seed }) {
   quali.forEach(({ c }, i) => { c.grid = i; });
   cars.sort((a, b) => a.grid - b.grid);
 
+  // AI starting tyres and how hard each AI pushes a set before pitting
+  cars.forEach((c) => {
+    c.aiWearLimit = 0.66 + rng() * 0.16;
+    if (!c.isPlayer) {
+      const r = rng();
+      c.compound = c.grid < 10 ? (r < 0.6 ? 'M' : 'S') : (r < 0.4 ? 'S' : r < 0.75 ? 'M' : 'H');
+    }
+  });
+
   const race = {
     track, engine, rng, cars,
     time: 0,
@@ -95,13 +117,26 @@ export function createRace({ teams, track, engine, playerTeamId, seed }) {
     fastest: null, // { carId, time, lap }
     events: [],
   };
-  // First lap times (includes the grid slot penalty)
+  // Provisional lap-1 times; startRace() fixes them when the lights go out,
+  // so the player can still change starting tyres on the grid.
   cars.forEach((c) => {
     c.lapTime = nextLapTime(race, c) + c.grid * GRID_SLOT_TIME;
   });
-  resolveTraffic(race, cars);
   return race;
 }
+
+/** Lights out: lock starting tyres and plan lap 1. */
+export function startRace(race) {
+  if (race.started) return;
+  race.started = true;
+  race.cars.forEach((c) => {
+    c.compoundsUsed = [c.compound];
+    c.lapTime = nextLapTime(race, c) + c.grid * GRID_SLOT_TIME;
+  });
+  resolveTraffic(race, race.cars);
+}
+
+const ctxFor = (race, c) => ({ track: race.track, driver: c.driver, ersMode: effectiveErs(c), fuelMode: c.fuelMode });
 
 /** ERS mode actually used this lap: needs battery charge. */
 export function effectiveErs(c) {
@@ -111,16 +146,42 @@ export function effectiveErs(c) {
 
 function nextLapTime(race, c) {
   const { engine, track } = race;
+  // engine with fresh Mediums = base pace; the tyre model adds compound + wear
   return engine.calculateLapTime(
-    track, c.team, c.driver, c.lapsDone + 1, c.fuel, 'Medium', c.tireWear, effectiveErs(c), c.fuelMode,
-  );
+    track, c.team, c.driver, c.lapsDone + 1, c.fuel, 'Medium', 0, effectiveErs(c), c.fuelMode,
+  ) + tyreDelta(c.compound, c.tireWear);
 }
 
-/** Simple AI: spend battery on Attack when it is well charged. */
-function aiStrategy(c) {
-  if (c.isPlayer) return;
+/** Simple AI: spend battery on Attack when it is well charged, and plan pit stops. */
+function aiStrategy(race, c, lapsLeft) {
+  if (c.isPlayer && !c.autoAi) return; // player cars only when the engineer has control
   if (c.ersMode === ERS.Neutral && c.battery >= 70) c.ersMode = ERS.Attack;
   else if (c.ersMode === ERS.Attack && c.battery <= 20) c.ersMode = ERS.Neutral;
+
+  if (lapsLeft <= 2 || c.pitRequest) return;
+  const needsOther = new Set(c.compoundsUsed).size < 2;
+  const worn = c.tireWear >= c.aiWearLimit;
+  const ruleDeadline = needsOther && lapsLeft <= 6;
+  // would the current set make it to the flag?
+  const finishesOnThese = c.tireWear + wearPerLap(c.compound, ctxFor(race, c)) * lapsLeft <= c.aiWearLimit + 0.12;
+  if (!worn && !ruleDeadline) return;
+  if (!needsOther && finishesOnThese) return;
+  c.pitRequest = chooseCompound(race, c, lapsLeft);
+}
+
+/** Softest compound that reaches the end (or the hardest if none does), respecting the rule. */
+export function chooseCompound(race, c, lapsLeft) {
+  const used = new Set(c.compoundsUsed);
+  const ctx = { track: race.track, driver: c.driver };
+  const limit = c.aiWearLimit || 0.75;
+  const lasts = (k) => wearPerLap(k, ctx) * lapsLeft <= limit + 0.05;
+  let options = ['S', 'M', 'H'];
+  if (used.size === 1) {
+    const other = options.filter((k) => !used.has(k));
+    // if this is the last stop it must be a different compound
+    if (other.some(lasts)) options = other;
+  }
+  return options.find(lasts) || 'H';
 }
 
 /** Race order: laps done, then who crossed the line first. */
@@ -129,6 +190,7 @@ export function order(race) {
     if (!!a.dnf !== !!b.dnf) return a.dnf ? 1 : -1;
     if (a.dnf && b.dnf) return b.retiredAt - a.retiredAt;
     if (b.lapsDone !== a.lapsDone) return b.lapsDone - a.lapsDone;
+    if (a.finished && b.finished) return (a.finishTime + a.penalty) - (b.finishTime + b.penalty);
     return a.lapStart - b.lapStart;
   });
 }
@@ -210,7 +272,9 @@ function completeLap(race, c, track) {
   if (lapNo > 1 && (c.bestLap === null || realLap < c.bestLap)) c.bestLap = realLap;
   c.fuel = Math.max(0, c.fuel - race.engine.calculateFuelConsumption(track, c.fuelMode));
   const usedErs = effectiveErs(c);
-  c.tireWear = Math.min(1, c.tireWear + 0.02 * (usedErs === ERS.Overtake ? 1.3 : 1));
+  c.tireWear = Math.min(1, c.tireWear + wearPerLap(c.compound, ctxFor(race, c)));
+  c.tyreAge += 1;
+  c.pitThisLap = null;
   const wasCharged = c.battery > 0;
   c.battery = Math.max(0, Math.min(100, c.battery + BATTERY_PER_LAP[usedErs]));
   if (c.isPlayer && wasCharged && c.battery === 0 && c.ersMode !== ERS.Neutral) {
@@ -244,6 +308,10 @@ function completeLap(race, c, track) {
     }
     c.finished = true;
     c.finishTime = crossAt;
+    if (new Set(c.compoundsUsed).size < 2) {
+      c.penalty = TWO_COMPOUND_PENALTY;
+      log(race, lapNo, c.isPlayer ? 'danger' : 'info', `${c.driver.name}: ${TWO_COMPOUND_PENALTY} s penalty, only one tyre compound used.`, [c.id]);
+    }
     return;
   }
 
@@ -270,9 +338,45 @@ function completeLap(race, c, track) {
     }
   }
 
-  aiStrategy(c);
-  c.lapTime = nextLapTime(race, c);
+  const lapsLeft = track.totalLaps - lapNo;
+  // Tyre warnings and punctures
+  let extra = 0;
+  if (c.tireWear > 0.9 && race.rng() < (c.tireWear - 0.9) * 1.5) {
+    log(race, lapNo, c.isPlayer ? 'danger' : 'warning', `Puncture for ${c.driver.name}! Limping back to the pits.`, [c.id]);
+    extra = 14;
+    c.pitRequest = c.pitRequest || chooseCompound(race, c, lapsLeft);
+  } else if (c.isPlayer && c.tireWear > 0.7 && !c.tyreWarned) {
+    c.tyreWarned = true;
+    log(race, lapNo, 'warning', `${c.driver.name}: these ${COMPOUNDS[c.compound].name}s are going off. Box soon.`, [c.id]);
+  }
+  if (c.isPlayer && lapsLeft === 12 && new Set(c.compoundsUsed).size < 2) {
+    log(race, lapNo, 'warning', `${c.driver.name}: remember we still have to run a second compound.`, [c.id]);
+  }
+
+  aiStrategy(race, c, lapsLeft);
+  if (c.pitRequest) extra += pitStop(race, c, lapNo);
+  c.lapTime = nextLapTime(race, c) + extra;
   resolveTraffic(race, [c]);
+}
+
+function pitStop(race, c, lapNo) {
+  const loss = race.track.pitLoss ?? 20;
+  const slow = race.rng() < 0.04;
+  const stop = 2.2 + race.rng() * 0.8 + (slow ? 4 + race.rng() * 3 : 0);
+  const from = c.compound;
+  c.compound = c.pitRequest;
+  c.pitRequest = null;
+  c.tireWear = 0;
+  c.tyreAge = 0;
+  c.tyreWarned = false;
+  c.stops += 1;
+  c.compoundsUsed.push(c.compound);
+  c.pitThisLap = { loss, stop };
+  if (c.isPlayer || slow) {
+    log(race, lapNo, slow ? 'warning' : 'info',
+      `${c.driver.name} pits: ${COMPOUNDS[from].name} to ${COMPOUNDS[c.compound].name}, ${stop.toFixed(1)} s stop${slow ? ' (slow stop!)' : ''}.`, [c.id]);
+  }
+  return loss + stop;
 }
 
 function retire(race, c, reason, lapNo) {
@@ -281,14 +385,37 @@ function retire(race, c, reason, lapNo) {
   log(race, lapNo, 'danger', `${c.driver.name} retires: ${reason}.`, [c.id]);
 }
 
-/** Lap distance for the 3D view: laps done + fraction, grid slot offset on lap 1. */
-export function lapFloat(race, c) {
-  if (c.dnf) return c.lapsDone + 0.0; // parked at the line it last crossed
-  if (c.finished) return c.lapsDone + Math.min(0.06, (race.time - c.finishTime) / c.lapTime); // roll past the line, then stop
-  const frac = Math.min(0.9999, Math.max(0, (race.time - c.lapStart) / c.lapTime));
-  if (c.lapsDone === 0) return -c.grid * GRID_SLOT_LAP + frac * (1 + c.grid * GRID_SLOT_LAP);
-  return c.lapsDone + frac;
+/** Where a team's pit box is, as a lap fraction inside the pit lane. */
+export const pitBoxFrac = (teamIndex) => PIT_LANE.start + 0.025 + teamIndex * 0.015;
+
+/**
+ * 3D pose: { lapFloat, inPit }. lapFloat = laps done + fraction of the lap.
+ * On a pit lap the first part of the lap is spent in the pit lane: drive to
+ * the team's box, stop, drive out, then the rest of the lap at racing speed.
+ */
+export function carPose(race, c) {
+  if (c.dnf) return { lapFloat: c.lapsDone, inPit: false }; // parked where it stopped
+  if (c.finished) return { lapFloat: c.lapsDone + Math.min(0.06, (race.time - c.finishTime) / c.lapTime), inPit: false };
+  const t = Math.max(0, race.time - c.lapStart);
+  if (c.pitThisLap && c.lapsDone > 0) {
+    const { loss, stop } = c.pitThisLap;
+    const box = pitBoxFrac(c.teamIndex);
+    const pitTime = loss + stop;
+    const drive = loss / 2;
+    let frac;
+    if (t < drive) frac = (t / drive) * box;
+    else if (t < drive + stop) frac = box;
+    else if (t < pitTime) frac = box + ((t - drive - stop) / drive) * (PIT_LANE.end - box);
+    else frac = PIT_LANE.end + Math.min(0.9999 - PIT_LANE.end, ((t - pitTime) / (c.lapTime - pitTime)) * (1 - PIT_LANE.end));
+    return { lapFloat: c.lapsDone + frac, inPit: frac > PIT_LANE.start * 0.5 && frac < PIT_LANE.end };
+  }
+  const frac = Math.min(0.9999, t / c.lapTime);
+  if (c.lapsDone === 0) return { lapFloat: -c.grid * GRID_SLOT_LAP + frac * (1 + c.grid * GRID_SLOT_LAP), inPit: false };
+  return { lapFloat: c.lapsDone + frac, inPit: false };
 }
+
+/** Lap distance only, for callers that do not need the pit flag. */
+export const lapFloat = (race, c) => carPose(race, c).lapFloat;
 
 /** Plain snapshot for React (no functions, no shared mutable objects). */
 export function snapshot(race) {
@@ -318,16 +445,32 @@ export function snapshot(race) {
         isPlayer: c.isPlayer, gap, lastLap: c.lastLap, bestLap: c.bestLap, lapsDone: c.lapsDone,
         fuel: c.fuel, fuelPerLap: race.engine.calculateFuelConsumption(race.track, c.fuelMode), battery: c.battery, tireWear: c.tireWear, ersMode: c.ersMode, fuelMode: c.fuelMode,
         dnf: c.dnf, finished: c.finished, grid: c.grid + 1,
+        compound: c.compound, tyreAge: c.tyreAge, autoAi: !!c.autoAi, stops: c.stops, pitRequest: c.pitRequest,
+        inPit: !!c.pitThisLap && race.time - c.lapStart < c.pitThisLap.loss + c.pitThisLap.stop,
+        compoundsUsed: [...new Set(c.compoundsUsed.length ? c.compoundsUsed : [c.compound])], penalty: c.penalty,
         points: race.over && !c.dnf ? POINTS[i] || 0 : 0,
       };
     }),
   };
 }
 
-/** Player strategy change; takes effect from the next lap. */
-export function setStrategy(race, carId, { ersMode, fuelMode }) {
+/**
+ * Player strategy change; takes effect from the next lap.
+ * pitRequest: 'S' | 'M' | 'H' to box at the end of this lap, null to cancel.
+ * compound: starting tyre (only before the start).
+ */
+export function setStrategy(race, carId, { ersMode, fuelMode, pitRequest, compound, autoAi }) {
   const c = race.cars.find((o) => o.id === carId);
   if (!c || c.dnf || c.finished) return;
   if (ersMode) c.ersMode = ersMode;
   if (fuelMode) c.fuelMode = fuelMode;
+  if (autoAi !== undefined) c.autoAi = autoAi;
+  if (pitRequest !== undefined) {
+    c.pitRequest = pitRequest;
+    if (pitRequest) log(race, c.lapsDone + 1, 'info', `Box, box, ${c.driver.name}. ${COMPOUNDS[pitRequest].name}s are ready.`, [c.id]);
+  }
+  if (compound && !race.started) {
+    c.compound = compound;
+    c.lapTime = nextLapTime(race, c) + c.grid * GRID_SLOT_TIME;
+  }
 }

@@ -5,7 +5,7 @@ import TimingTower from './components/TimingTower';
 import RaceSummaryModal from './components/RaceSummaryModal';
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID, RACE_TRACK } from './data/grid';
-import { createRace, step, snapshot, lapFloat, setStrategy } from './game/raceSim';
+import { createRace, startRace, step, snapshot, carPose, setStrategy, PIT_LANE } from './game/raceSim';
 
 // Race seconds per real second at "1x": one ~72 s lap in about 1.2 s.
 const BASE_SPEED = 60;
@@ -32,18 +32,20 @@ function App() {
     let lastSnap = 0;
     const tick = (now) => {
       const race = raceRef.current;
-      const dt = Math.min(0.1, (now - last) / 1000);
+      const dt = Math.min(0.5, (now - last) / 1000); // large cap: race speed must not depend on FPS
       last = now;
       if (running && !race.over) step(race, dt * BASE_SPEED * speed);
 
       // spread cars across the track when they run close together
       const byDistance = race.cars
-        .map((c) => ({ c, lf: lapFloat(race, c) }))
+        .map((c) => ({ c, ...carPose(race, c) }))
+        .map(({ c, lapFloat: lf, inPit }) => ({ c, lf, inPit }))
         .sort((a, b) => b.lf - a.lf);
       let prevLf = Infinity;
       let prevLane = 0;
-      carsRef.current = byDistance.map(({ c, lf }) => {
+      carsRef.current = byDistance.map(({ c, lf, inPit }) => {
         let lane = 0;
+        if (inPit) return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane: PIT_LANE.lateral };
         if (c.dnf) lane = 6;
         else if (prevLf - lf < 0.012) lane = prevLane === 0 ? (c.grid % 2 ? 1.6 : -1.6) : 0;
         if (!c.dnf) { prevLf = lf; prevLane = lane; }
@@ -63,7 +65,7 @@ function App() {
 
   const toggleRun = useCallback(() => {
     const race = raceRef.current;
-    race.started = true;
+    startRace(race);
     setRunning((r) => !r && !race.over);
   }, []);
 
@@ -109,7 +111,7 @@ function App() {
             <h2 className="text-xl font-bold">{RACE_TRACK.name}</h2>
             <p className="label">Click a driver in the tower to follow them</p>
           </div>
-          <RaceView carsRef={carsRef} focusId={focusId} />
+          <RaceView carsRef={carsRef} focusId={focusId} teams={GRID_TEAMS} />
         </section>
         <TimingTower snap={snap} focusId={focusId} onFocus={setFocusId} />
       </main>
