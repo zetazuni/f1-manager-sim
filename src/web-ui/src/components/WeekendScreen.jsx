@@ -43,6 +43,8 @@ export const TrackCard = ({ track, round, total }) => {
             <Stat label="Fuel use"><Pips n={rating(track.fuelConsumption, 1.5, 1.9)} color="bg-yellow-400" /></Stat>
             <Stat label="Pit lane loss">{track.pitLoss} s</Stat>
             <Stat label="Overtaking"><Pips n={track.env === 'city' || track.env === 'night' ? 2 : track.env === 'desert' ? 5 : 3} color="bg-data" /></Stat>
+            <Stat label="Rain chance">{Math.round((track.rainChance ?? 0) * 100)}%</Stat>
+            <Stat label="Environment">{env.label}</Stat>
           </div>
         </div>
       </div>

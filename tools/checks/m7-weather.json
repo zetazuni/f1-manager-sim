@@ -1,0 +1,19 @@
+[
+  { "waitFor": "[data-testid=qualify]" },
+  { "shot": "m7-preview.png" },
+  { "eval": "document.querySelector('[data-testid=qualify]').click(), 'q'" },
+  { "waitFor": "[data-testid=to-race]" },
+  { "eval": "document.querySelector('[data-testid=to-race]').click(), 'r'" },
+  { "waitFor": "[data-testid=run]" },
+  { "eval": "'rain plan: ' + JSON.stringify(window.__zetraceRace.weather.rain)" },
+  { "eval": "document.querySelector('[data-testid=run]').click(), document.querySelector('[data-speed=\"4\"]').click(), 'go'" },
+  { "eval": "new Promise(r => { const t0 = Date.now(); const i = setInterval(() => { const R = window.__zetraceRace; const lead = R.cars.reduce((a, c) => Math.max(a, c.lapsDone), 0); const w = R.weather.wet[lead + 1] || 0; if (w > 0.3 || Date.now() - t0 > 60000) { clearInterval(i); document.querySelector('[data-speed=\"1\"]').click(); r('lap ' + lead + ' wetness ' + w); } }, 100); })" },
+  { "wait": 3500 },
+  { "shot": "m7-rain.png" },
+  { "eval": "'tyres: ' + window.__zetraceRace.cars.map(c => c.compound).join('')" },
+  { "eval": "import('/src/game/raceSim.js').then(R => { const race = window.__zetraceRace; const lead = race.cars.reduce((a, c) => Math.max(a, c.lapsDone), 0); R.deploySafetyCar(race, lead, 'test crash'); return 'sc ' + !!race.sc; })" },
+  { "waitFor": "[data-testid=sc-banner]" },
+  { "wait": 2500 },
+  { "shot": "m7-sc.png" },
+  { "eval": "'sc car entity: ' + !!window.__zetrace.carEntities.get('safety-car')" }
+]

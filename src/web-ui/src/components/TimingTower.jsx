@@ -5,7 +5,10 @@ import TyreBadge from './TyreBadge';
 const TimingTower = ({ snap, focusId, onFocus }) => (
   <aside className="panel p-4 lg:col-span-2 2xl:col-span-1">
     <div className="mb-3 flex items-baseline justify-between">
-      <h2 className="panel-title">Timing</h2>
+      <h2 className="panel-title">
+        Timing
+        {snap.safetyCar && <span className="ml-2 animate-pulse rounded bg-amber-400 px-1.5 py-0.5 text-[10px] tracking-widest text-slate-900">SC</span>}
+      </h2>
       {snap.fastest && (
         <p className="text-[11px] text-purple-300">
           Fastest {formatLap(snap.fastest.time)} (L{snap.fastest.lap})

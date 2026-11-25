@@ -1,7 +1,7 @@
 import React from 'react';
 import { ERS, FUEL, formatLap } from '../game/raceSim';
 import { playClickSound } from '../services/AudioManager';
-import { COMPOUNDS, COMPOUND_KEYS } from '../game/tyres';
+import { COMPOUNDS, COMPOUND_KEYS, WET_KEYS } from '../game/tyres';
 import TyreBadge from './TyreBadge';
 
 const EVENT_COLOR = {
@@ -110,6 +110,25 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
           })}
         </div>
         <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
+          <span className="label">Wet tyres</span>
+          {WET_KEYS.map((k) => {
+            const active = started ? row.pitRequest === k : row.compound === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                data-pit={k}
+                onClick={() => act(started ? { pitRequest: row.pitRequest === k ? null : k } : { compound: k })}
+                className={`${chip(active, 'bg-slate-600')} flex items-center justify-center gap-1.5`}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: COMPOUNDS[k].color }} />
+                {k === 'I' ? 'Inter' : 'Wet'}
+              </button>
+            );
+          })}
+          <span />
+        </div>
+        <div className="grid grid-cols-[4.5rem_1fr_1fr_1fr] items-center gap-2">
           <span className="label">Fuel</span>
           {[FUEL.Lean, FUEL.Standard, FUEL.Rich].map((m) => (
             <button key={m} type="button" onClick={() => act({ fuelMode: m })} className={chip(row.fuelMode === m, 'bg-blue-600')}>{m}</button>
@@ -126,6 +145,32 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
         />
         Engineer strategy (the team plans pit stops and ERS for this car)
       </label>
+    </div>
+  );
+};
+
+const conditionOf = (w) => (w < 0.05 ? 'Dry' : w < 0.26 ? 'Damp' : w < 0.6 ? 'Wet' : 'Heavy rain');
+
+/** Current conditions, wetness and the radar forecast. */
+const WeatherStrip = ({ wetness = 0, forecast }) => {
+  const label = conditionOf(wetness);
+  const icon = wetness < 0.05 ? (forecast ? 'cloud' : 'sun') : 'rain';
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-line bg-ink/50 px-3 py-2" data-testid="weather">
+      <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        {icon === 'sun' && (<><circle cx="12" cy="12" r="4" className="text-amber-300" stroke="#fcd34d" /><path stroke="#fcd34d" d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>)}
+        {icon !== 'sun' && <path stroke="#cbd5e1" d="M7 17a4 4 0 1 1 .8-7.9A5.5 5.5 0 0 1 18.5 11 3 3 0 0 1 18 17z" />}
+        {icon === 'rain' && <path stroke="#60a5fa" d="M8 20l1-2M12 21l1-2M16 20l1-2" />}
+      </svg>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between">
+          <span className="font-display text-sm font-bold uppercase tracking-wider">{label}</span>
+          <span className="text-[11px] text-muted">{forecast ? `Radar: rain from about lap ${forecast.from}` : wetness > 0.05 ? 'Track wetness' : 'No rain on the radar'}</span>
+        </div>
+        <div className="mt-1 h-1 overflow-hidden rounded-full bg-panel-2">
+          <div className="h-full rounded-full bg-blue-400" style={{ width: `${Math.round(wetness * 100)}%` }} />
+        </div>
+      </div>
     </div>
   );
 };
@@ -153,6 +198,15 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
           <div className="h-full bg-gradient-to-r from-f1-red to-orange-400 transition-[width] duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
+
+      {snap.safetyCar && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-400/60 bg-amber-400/15 px-4 py-2.5" data-testid="sc-banner">
+          <span className="animate-pulse rounded bg-amber-400 px-2 py-0.5 font-display text-sm font-bold tracking-widest text-slate-900">SAFETY CAR</span>
+          <span className="text-xs text-amber-100">No overtaking. The field closes up and pit stops cost about half as much.</span>
+        </div>
+      )}
+
+      <WeatherStrip wetness={snap.wetness} forecast={snap.rainForecast} />
 
       {/* Race radio: real events from the race */}
       <div className="min-h-[104px] rounded-lg border border-line bg-ink/70 p-4">

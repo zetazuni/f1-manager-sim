@@ -27,6 +27,7 @@ A realistic and fun Formula 1 Management Simulator.
 - **2026-10-09**: Enhanced CLI simulation with full race weekend simulation, strategy, and financial management.
 - **2026-11-15**: Race radio events on the dashboard.
 - **2026-11-25**: M1 layers and graphics recheck (Tailwind v4 actually loaded, CSS layers, z-index scale, rebuilt PlayCanvas scene, C# engine builds on .NET 8). Milestones now tracked in `docs/ROADMAP.md`.
+- **2026-11-26**: M7 weather (rain, inters, wets), driver errors, safety car, rain visuals.
 - **2026-11-26**: M6 career autosave, settings dialog (quality, sound, speed, reset), start lights, audio fix.
 - **2026-11-26**: M5 factory and finances (upgrade projects, budget, sponsors, AI development, Team HQ screen).
 - **2026-11-26**: M4 season (6 circuits, qualifying, championships), Standings and Calendar screens, pit wall theme, per-circuit 3D environments.
@@ -87,6 +88,7 @@ A realistic and fun Formula 1 Management Simulator.
 
 ## Test hooks
 - `?round=N` in the URL opens round N of a new season (quick circuit check).
+- `?rain=1` forces a rain spell in every race.
 - `window.__zetrace` (3D app) and `window.__zetraceRace` (live race) are read-only hooks for the headless checks.
 
 ## How to run
