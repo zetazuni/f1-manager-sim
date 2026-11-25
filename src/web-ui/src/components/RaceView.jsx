@@ -2,6 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import * as pc from 'playcanvas';
 import { makeTrackPath } from '../game/trackPath';
 import { buildCircuit, buildCar, clearMaterialCache, clearCarMeshCache } from '../game/scene';
+import { ENVIRONMENTS } from '../game/environments';
+
+const col = (hex, k = 1) => {
+  const c = new pc.Color();
+  c.fromString(hex);
+  return new pc.Color(c.r * k, c.g * k, c.b * k);
+};
 
 /**
  * 3D race view.
@@ -10,7 +17,7 @@ import { buildCircuit, buildCar, clearMaterialCache, clearCarMeshCache } from '.
  * Reading a ref (not props) keeps the cars moving smoothly between React renders,
  * and the PlayCanvas app is created once instead of on every prop change.
  */
-const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
+const RaceView = ({ carsRef, focusId = null, teams = [], track = null, quality = 'high' }) => {
   const canvasRef = useRef(null);
   const focusRef = useRef(focusId);
   useEffect(() => {
@@ -30,10 +37,28 @@ const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
     app.setCanvasFillMode(pc.FILLMODE_NONE);
     app.setCanvasResolution(pc.RESOLUTION_AUTO);
     app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-    app.scene.ambientLight = new pc.Color(0.38, 0.4, 0.46);
+    const theme = ENVIRONMENTS[track?.env] || ENVIRONMENTS.forest;
+    app.scene.ambientLight = col(theme.ambient, theme.ambientLevel * 2.2);
+    // distance fog in the sky colour gives depth to the far edge of the map
+    try {
+      if (app.scene.fog && typeof app.scene.fog === 'object') {
+        app.scene.fog.type = pc.FOG_LINEAR;
+        app.scene.fog.color = col(theme.sky);
+        app.scene.fog.start = 230;
+        app.scene.fog.end = 420;
+      }
+    } catch { /* fog is optional */ }
     app.start();
 
-    const resize = () => app.resizeCanvas(canvas.clientWidth, canvas.clientHeight);
+    // Size only the drawing buffer; CSS keeps control of the on-screen size.
+    // (app.resizeCanvas would write the size into the inline style, and a size
+    // of 0 while the race tab is hidden would then stick.)
+    const resize = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (!w || !h) return;
+      app.graphicsDevice.resizeCanvas(w, h);
+    };
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     resize();
@@ -42,7 +67,7 @@ const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
     const camera = new pc.Entity('camera');
     camera.addComponent('camera', {
       projection: pc.PROJECTION_ORTHOGRAPHIC,
-      clearColor: new pc.Color(0.05, 0.07, 0.11),
+      clearColor: col(theme.sky),
       nearClip: 1,
       farClip: 600,
     });
@@ -52,19 +77,19 @@ const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
     const sun = new pc.Entity('sun');
     sun.addComponent('light', {
       type: 'directional',
-      color: new pc.Color(1, 0.97, 0.9),
-      intensity: 1.4,
-      castShadows: true,
-      shadowDistance: 260,
-      shadowResolution: 2048,
+      color: col(theme.sun.color),
+      intensity: theme.sun.intensity,
+      castShadows: quality !== 'low',
+      shadowDistance: 420,
+      shadowResolution: quality === 'high' ? 2048 : 1024,
       shadowBias: 0.2,
       normalOffsetBias: 0.05,
     });
-    sun.setEulerAngles(50, 30, 0);
+    sun.setEulerAngles(theme.sun.pitch, theme.sun.yaw, 0);
     app.root.addChild(sun);
 
-    const path = makeTrackPath();
-    buildCircuit(app, path, { teams });
+    const path = makeTrackPath(track?.points);
+    buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3 });
 
     // Auto-fit: project the track into the camera's view plane and size the
     // orthographic view so the whole circuit fits the canvas, whatever its shape.
@@ -145,7 +170,7 @@ const RaceView = ({ carsRef, focusId = null, teams = [] }) => {
       clearCarMeshCache();
       if (window.__zetrace?.app === app) delete window.__zetrace;
     };
-  }, [carsRef, teams]);
+  }, [carsRef, teams, track, quality]);
 
   return (
     <div className="relative">

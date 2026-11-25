@@ -131,6 +131,42 @@ export class MeshBuilder {
     }
   }
 
+  /**
+   * Upright frustum / cone (rTop = 0) with flat-shaded sides: pine trees,
+   * mountains, lamp heads. Base sits at pos[1].
+   */
+  frustum({ pos, rBottom, rTop = 0, height, sides = 6, color, colorTop = null, spin = 0 }) {
+    const [r, g, b] = this.color(color);
+    const [rt, gt, bt] = colorTop ? this.color(colorTop) : [r, g, b];
+    const [px, py, pz] = pos;
+    for (let i = 0; i < sides; i++) {
+      const a0 = spin + (i / sides) * Math.PI * 2;
+      const a1 = spin + ((i + 1) / sides) * Math.PI * 2;
+      const p0 = [px + Math.cos(a0) * rBottom, py, pz + Math.sin(a0) * rBottom];
+      const p1 = [px + Math.cos(a1) * rBottom, py, pz + Math.sin(a1) * rBottom];
+      const p2 = [px + Math.cos(a1) * rTop, py + height, pz + Math.sin(a1) * rTop];
+      const p3 = [px + Math.cos(a0) * rTop, py + height, pz + Math.sin(a0) * rTop];
+      // face normal from the quad's diagonals
+      const ux = p2[0] - p0[0]; const uy = p2[1] - p0[1]; const uz = p2[2] - p0[2];
+      const vx = p1[0] - p3[0]; const vy = p1[1] - p3[1]; const vz = p1[2] - p3[2];
+      let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len; ny /= len; nz /= len;
+      // make sure the normal points outwards
+      const am = (a0 + a1) / 2;
+      if (nx * Math.cos(am) + nz * Math.sin(am) < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      const shade = 0.8 + 0.25 * Math.max(0, nx * 0.5 + ny * 0.7 + nz * 0.5);
+      const base = this.vertexCount;
+      [p0, p1, p2, p3].forEach((p, k) => {
+        this.positions.push(...p);
+        this.normals.push(nx, ny, nz);
+        const top = k >= 2;
+        this.colors.push((top ? rt : r) * shade, (top ? gt : g) * shade, (top ? bt : b) * shade, 1);
+      });
+      this.indices.push(base, base + 2, base + 1, base, base + 3, base + 2);
+    }
+  }
+
   /** Build the mesh. Returns null when nothing was added. */
   build(device) {
     if (!this.indices.length) return null;
@@ -159,9 +195,24 @@ export function vertexColorMaterial(glossy = false) {
   if (glossy) vcGlossy = m; else vcMaterial = m;
   return m;
 }
+let vcGlow = null;
+/** Self-lit vertex-colour material (lamps, lit windows, neon). */
+export function glowMaterial() {
+  if (vcGlow) return vcGlow;
+  const m = new pc.StandardMaterial();
+  m.diffuse = new pc.Color(0, 0, 0);
+  m.emissive = new pc.Color(1, 1, 1);
+  m.emissiveVertexColor = true;
+  m.emissiveIntensity = 1.6;
+  m.useLighting = false;
+  m.update();
+  vcGlow = m;
+  return m;
+}
 export function clearVertexColorMaterials() {
   vcMaterial = null;
   vcGlossy = null;
+  vcGlow = null;
 }
 
 /** Wrap a mesh in an entity with one render component. */

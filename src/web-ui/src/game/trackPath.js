@@ -3,9 +3,25 @@
 // "fraction 0.5" really means halfway round the lap.
 
 export const DEFAULT_CIRCUIT = [
-  [-40, -21], [0, -23], [38, -22], [47, -11], [41, 2], [23, 5],
-  [15, 15], [20, 26], [6, 31], [-20, 28], [-38, 22], [-47, 6], [-47, -10],
+  [-32, -22], [4, -22], [40, -22], [50, -11], [43, 2], [25, 6], [17, 16],
+  [22, 28], [6, 34], [-20, 31], [-40, 24], [-52, 8], [-54, -10], [-46, -22],
 ];
+
+// Pit lane in track units along the main straight (every layout has a straight
+// of at least 66 units after the line; tools/validate-tracks.mjs checks it).
+export const PIT = { startUnits: 6, endUnits: 60, rampUnits: 9, lateral: -9, firstBox: 10, boxSpacing: 4.6 };
+
+/** Pit lane as lap fractions for a track of length `total`. */
+export function pitLayout(total) {
+  return {
+    start: PIT.startUnits / total,
+    end: PIT.endUnits / total,
+    ramp: PIT.rampUnits / total,
+    lateral: PIT.lateral,
+    garageLen: PIT.boxSpacing * 0.96,
+    boxFrac: (teamIndex) => (PIT.firstBox + teamIndex * PIT.boxSpacing) / total,
+  };
+}
 
 const catmullRom = (p0, p1, p2, p3, t) => {
   const t2 = t * t;

@@ -1,128 +1,164 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Dashboard from './components/Dashboard';
-import RaceView from './components/RaceView';
-import TimingTower from './components/TimingTower';
-import RaceSummaryModal from './components/RaceSummaryModal';
+import React, { useState, useCallback, useMemo } from 'react';
+import RaceScreen from './components/RaceScreen';
+import StandingsView from './components/StandingsView';
+import CalendarView from './components/CalendarView';
+import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
-import { GRID_TEAMS, PLAYER_TEAM_ID, RACE_TRACK } from './data/grid';
-import { createRace, startRace, step, snapshot, carPose, setStrategy, PIT_LANE } from './game/raceSim';
+import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
+import { CALENDAR } from './data/calendar';
+import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
 
-// Race seconds per real second at "1x": one ~72 s lap in about 1.2 s.
-const BASE_SPEED = 60;
-const SNAPSHOT_MS = 200;
+const TABS = [
+  { id: 'weekend', label: 'Race weekend' },
+  { id: 'standings', label: 'Standings' },
+  { id: 'calendar', label: 'Calendar' },
+];
 
-const newRace = () => createRace({
-  teams: GRID_TEAMS, track: RACE_TRACK, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID,
-});
+const newSeason = () => {
+  const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: PLAYER_TEAM_ID });
+  // Test hook: ?round=N opens round N (1-based) to check a circuit quickly
+  const r = Number(new URLSearchParams(window.location.search).get('round'));
+  if (r >= 1 && r <= CALENDAR.length) season.round = r - 1;
+  return season;
+};
 
 function App() {
-  const [firstRace] = useState(newRace);
-  const raceRef = useRef(firstRace);
-  const carsRef = useRef([]);
-  const [snap, setSnap] = useState(() => snapshot(firstRace));
-  const [running, setRunning] = useState(false);
+  const [season, setSeason] = useState(newSeason);
+  const [tab, setTab] = useState('weekend');
   const [speed, setSpeed] = useState(1);
-  const [summaryClosed, setSummaryClosed] = useState(false);
-  const [focusId, setFocusId] = useState(`${PLAYER_TEAM_ID}-0`);
-
-  // One loop: step the sim, feed the 3D view every frame, refresh React a few times a second
-  useEffect(() => {
-    let raf = 0;
-    let last = performance.now();
-    let lastSnap = 0;
-    const tick = (now) => {
-      const race = raceRef.current;
-      const dt = Math.min(0.5, (now - last) / 1000); // large cap: race speed must not depend on FPS
-      last = now;
-      if (running && !race.over) step(race, dt * BASE_SPEED * speed);
-
-      // spread cars across the track when they run close together
-      const byDistance = race.cars
-        .map((c) => ({ c, ...carPose(race, c) }))
-        .map(({ c, lapFloat: lf, inPit }) => ({ c, lf, inPit }))
-        .sort((a, b) => b.lf - a.lf);
-      let prevLf = Infinity;
-      let prevLane = 0;
-      carsRef.current = byDistance.map(({ c, lf, inPit }) => {
-        let lane = 0;
-        if (inPit) return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane: PIT_LANE.lateral };
-        if (c.dnf) lane = 6;
-        else if (prevLf - lf < 0.012) lane = prevLane === 0 ? (c.grid % 2 ? 1.6 : -1.6) : 0;
-        if (!c.dnf) { prevLf = lf; prevLane = lane; }
-        return { id: c.id, color: c.color, accent: c.accent, lapFloat: lf, lane };
-      });
-
-      if (now - lastSnap > SNAPSHOT_MS) {
-        lastSnap = now;
-        setSnap(snapshot(race));
-        if (race.over) setRunning(false);
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [running, speed]);
-
-  const toggleRun = useCallback(() => {
-    const race = raceRef.current;
-    startRace(race);
-    setRunning((r) => !r && !race.over);
-  }, []);
-
-  const changeStrategy = useCallback((carId, change) => {
-    setStrategy(raceRef.current, carId, change);
-    setSnap(snapshot(raceRef.current));
-  }, []);
-
-  const restart = useCallback(() => {
-    raceRef.current = newRace();
-    setSnap(snapshot(raceRef.current));
-    setRunning(false);
-    setSummaryClosed(false);
-  }, []);
-
+  const [quality] = useState('high');
   const playerTeam = GRID_TEAMS.find((t) => t.id === PLAYER_TEAM_ID);
-  const showSummary = snap.over && !summaryClosed;
+  const playerCars = playerTeam.drivers.map((d, i) => ({ carId: `${PLAYER_TEAM_ID}-${i}`, name: d.name }));
+  const [modes, setModes] = useState(() => Object.fromEntries(playerCars.map((p) => [p.carId, QUALI_MODE.Safe])));
+
+  const calTrack = CALENDAR[Math.min(season.round, CALENDAR.length - 1)];
+  const track = useMemo(() => raceTrackOf(calTrack), [calTrack]);
+  const table = useMemo(() => standings(season, GRID_TEAMS), [season]);
+  const done = season.phase === 'done';
+
+  const nameOf = useCallback((carId) => {
+    if (!carId) return { name: '-', color: '#64748b', isPlayer: false };
+    const cut = carId.lastIndexOf('-');
+    const team = GRID_TEAMS.find((t) => t.id === carId.slice(0, cut));
+    const driver = team.drivers[Number(carId.slice(cut + 1))];
+    return { name: driver.name, color: team.color, isPlayer: team.id === PLAYER_TEAM_ID };
+  }, []);
+
+  const qualify = () => {
+    const quali = runQualifying({
+      teams: GRID_TEAMS, track, engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, modes, seed: Date.now(),
+    });
+    setSeason((s) => ({ ...s, phase: 'quali', quali }));
+  };
+  const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
+  const onFinished = useCallback((snap, fastestCarId) => {
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId));
+    setTab('weekend');
+  }, []);
+  const next = () => setSeason((s) => advance(s));
+  const restartSeason = () => {
+    setSeason(newSeason());
+    setTab('weekend');
+  };
+
+  const roundLabel = `Round ${season.round + 1}/${CALENDAR.length}`;
+  const phaseSteps = ['preview', 'quali', 'race', 'results'];
 
   return (
-    <div className="min-h-screen font-sans text-white">
-      <header className="sticky top-0 z-header border-b-2 border-f1-red bg-slate-950/90 px-4 py-4 backdrop-blur">
-        <h1 className="text-center text-3xl font-black italic tracking-tighter text-f1-red md:text-4xl">
-          ZETRACE <span className="text-white">F1 MANAGER</span>
-        </h1>
+    <div className="min-h-screen font-sans text-slate-100">
+      <header className="sticky top-0 z-header border-b border-line bg-ink/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-6 px-4">
+          <div className="flex items-center gap-3 py-3">
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-f1-red font-display text-xl font-bold italic shadow-[0_0_20px_rgba(225,6,0,0.5)]">Z</span>
+            <div className="leading-none">
+              <p className="font-display text-xl font-bold italic tracking-wide">ZETRACE</p>
+              <p className="font-display text-[10px] uppercase tracking-[0.35em] text-muted">F1 Manager</p>
+            </div>
+          </div>
+          <nav className="flex" aria-label="Main">
+            {TABS.map((t) => (
+              <button key={t.id} type="button" data-tab={t.id} onClick={() => setTab(t.id)} className={`tab ${tab === t.id ? 'tab-active' : ''}`}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-4 py-2 text-right">
+            {!done && (
+              <ol className="hidden items-center gap-1 md:flex" aria-label="Weekend progress">
+                {phaseSteps.map((p, i) => {
+                  const idx = phaseSteps.indexOf(season.phase);
+                  return (
+                    <li key={p} className={`rounded px-2 py-0.5 font-display text-[11px] font-bold uppercase tracking-widest ${
+                      i === idx ? 'bg-f1-red text-white' : i < idx ? 'text-emerald-400' : 'text-muted'
+                    }`}
+                    >
+                      {p === 'preview' ? 'Preview' : p === 'quali' ? 'Qualifying' : p === 'race' ? 'Race' : 'Results'}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            <div>
+              <p className="label">{done ? 'Season complete' : roundLabel}</p>
+              <p className="font-display text-sm font-bold uppercase tracking-wider">{done ? 'Final standings' : calTrack.name}</p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1800px] grid-cols-1 gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,0.9fr)]">
-        <Dashboard
-          team={playerTeam}
-          track={RACE_TRACK}
-          snap={snap}
-          running={running}
-          speed={speed}
-          onToggleRun={toggleRun}
-          onSpeed={setSpeed}
-          onStrategy={changeStrategy}
-          onRestart={restart}
-          focusId={focusId}
-          onFocus={setFocusId}
-        />
-        <section className="panel overflow-hidden p-4">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-xl font-bold">{RACE_TRACK.name}</h2>
-            <p className="label">Click a driver in the tower to follow them</p>
+      <main className="mx-auto max-w-[1800px] p-4">
+        {tab === 'standings' && (
+          <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
+        )}
+        {tab === 'calendar' && (
+          <CalendarView calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
+        )}
+        {tab === 'weekend' && (
+          <>
+            {done && <SeasonDone table={table.drivers} teamsTable={table.teams} onNewSeason={restartSeason} />}
+            {season.phase === 'preview' && (
+              <PreviewPanel
+                track={calTrack}
+                round={season.round + 1}
+                total={CALENDAR.length}
+                players={playerCars}
+                modes={modes}
+                onMode={(carId, m) => setModes((x) => ({ ...x, [carId]: m }))}
+                onQualify={qualify}
+              />
+            )}
+            {season.phase === 'quali' && <QualiPanel quali={season.quali} track={calTrack} onRace={toRace} />}
+            {season.phase === 'results' && (
+              <ResultsPanel
+                result={season.results[season.results.length - 1]}
+                track={calTrack}
+                table={table.drivers}
+                teamsTable={table.teams}
+                isLast={season.round + 1 >= CALENDAR.length}
+                onNext={next}
+                nameOf={nameOf}
+              />
+            )}
+          </>
+        )}
+        {/* The race stays mounted while browsing other tabs so it keeps running */}
+        {season.phase === 'race' && (
+          <div className={tab === 'weekend' ? '' : 'hidden'}>
+            <RaceScreen
+              key={`race-${season.round}`}
+              teams={GRID_TEAMS}
+              playerTeamId={PLAYER_TEAM_ID}
+              track={track}
+              gridOrder={season.quali?.map((q) => q.carId)}
+              roundLabel={roundLabel}
+              speed={speed}
+              onSpeed={setSpeed}
+              quality={quality}
+              onFinished={onFinished}
+            />
           </div>
-          <RaceView carsRef={carsRef} focusId={focusId} teams={GRID_TEAMS} />
-        </section>
-        <TimingTower snap={snap} focusId={focusId} onFocus={setFocusId} />
+        )}
       </main>
-
-      <RaceSummaryModal
-        isOpen={showSummary}
-        onClose={() => setSummaryClosed(true)}
-        onRestart={restart}
-        snap={snap}
-        trackName={RACE_TRACK.name}
-      />
     </div>
   );
 }
