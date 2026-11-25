@@ -175,7 +175,7 @@ const WeatherStrip = ({ wetness = 0, forecast }) => {
   );
 };
 
-const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, onStrategy, onRestart, finishLabel = 'New race', focusId, onFocus }) => {
+const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, onStrategy, onTeamOrder = () => {}, onRestart, finishLabel = 'New race', focusId, onFocus }) => {
   // fixed order (driver 1, driver 2) so buttons never swap under the cursor when positions change
   const players = snap.rows.filter((r) => r.isPlayer).sort((a, b) => a.id.localeCompare(b.id));
   const lapText = snap.over ? 'FINISHED' : `LAP ${snap.started ? snap.leaderLap : 0} / ${snap.totalLaps}`;
@@ -230,6 +230,34 @@ const Dashboard = ({ team, track, snap, running, speed, onToggleRun, onSpeed, on
           <DriverCard key={row.id} row={row} totalLaps={snap.totalLaps} started={snap.started} focused={focusId === row.id} onFocus={onFocus} onStrategy={onStrategy} />
         ))}
       </div>
+
+      {snap.started && !snap.over && (
+        <div className="rounded-lg border border-line bg-ink/50 p-3" data-testid="team-orders">
+          <p className="label mb-2">Team orders</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[['race', 'Let them race'], ['hold', 'Hold positions']].map(([o, label]) => (
+              <button
+                key={o}
+                type="button"
+                data-order={o}
+                onClick={() => { playClickSound(); onTeamOrder(o); }}
+                className={chip((snap.teamOrders?.[team.id] || 'race') === o, 'bg-slate-600')}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              data-order="swap"
+              onClick={() => { playClickSound(); onTeamOrder('swap'); }}
+              className={chip(!!snap.swapPending?.[team.id], 'bg-amber-500')}
+              title="The car ahead lets its teammate through when they are within 3 seconds"
+            >
+              {snap.swapPending?.[team.id] ? 'Swap pending' : 'Swap cars'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-[1fr_auto] gap-3">
         {snap.over ? (

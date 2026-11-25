@@ -5,6 +5,7 @@ import CalendarView from './components/CalendarView';
 import FactoryView from './components/FactoryView';
 import SettingsDialog from './components/SettingsDialog';
 import OffSeasonScreen from './components/OffSeasonScreen';
+import TitleScreen from './components/TitleScreen';
 import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
@@ -38,7 +39,9 @@ const newSeason = () => {
 /** Saved career when there is one (and no test hook), otherwise a new season. */
 const initialCareer = () => {
   const saved = testRound() ? null : loadCareer({ teams: GRID_TEAMS, playerTeamId: PLAYER_TEAM_ID });
-  return saved ? { season: saved.season, modes: saved.modes || null } : { season: newSeason(), modes: null };
+  return saved
+    ? { season: saved.season, modes: saved.modes || null, practice: saved.practice || null, hasSave: true }
+    : { season: newSeason(), modes: null, practice: null, hasSave: false };
 };
 
 function App() {
@@ -51,11 +54,18 @@ function App() {
   const seatIds = [0, 1].map((i) => `${PLAYER_TEAM_ID}-${i}`);
   const defaultModes = () => Object.fromEntries(seatIds.map((id) => [id, QUALI_MODE.Safe]));
   const [modes, setModes] = useState(() => boot.modes || defaultModes());
+  const defaultPractice = () => Object.fromEntries(seatIds.map((id) => [id, 'setup']));
+  const [practice, setPractice] = useState(() => boot.practice || defaultPractice());
+  // Title screen on every load (skipped by the ?round=N and ?notitle=1 test hooks)
+  const [onTitle, setOnTitle] = useState(() => {
+    const q = new URLSearchParams(window.location.search);
+    return !testRound() && q.get('notitle') !== '1';
+  });
 
   // Autosave the career whenever it changes
   useEffect(() => {
-    saveCareer({ season, modes });
-  }, [season, modes]);
+    if (!onTitle) saveCareer({ season, modes, practice });
+  }, [season, modes, practice, onTitle]);
   // Persist settings and apply sound
   useEffect(() => {
     saveSettings(settings);
@@ -135,12 +145,24 @@ function App() {
     clearCareer();
     setSeason(newSeason());
     setModes(defaultModes());
+    setPractice(defaultPractice());
     setTab('weekend');
     setSettingsOpen(false);
   };
 
   const roundLabel = `Round ${season.round + 1}/${CALENDAR.length}`;
   const phaseSteps = ['preview', 'quali', 'race', 'results'];
+
+  if (onTitle) {
+    const info = boot.hasSave ? `${season.career?.year ?? ''} season, ${season.phase === 'market' ? 'driver market' : season.phase === 'done' ? 'finale' : `round ${season.round + 1} of ${CALENDAR.length}`}` : null;
+    return (
+      <TitleScreen
+        saveInfo={info}
+        onContinue={() => setOnTitle(false)}
+        onNew={() => { resetCareer(); setOnTitle(false); }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans text-slate-100">
@@ -221,6 +243,8 @@ function App() {
                 players={playerCars}
                 modes={modes}
                 onMode={(carId, m) => setModes((x) => ({ ...x, [carId]: m }))}
+                practice={practice}
+                onPractice={(carId, p) => setPractice((x) => ({ ...x, [carId]: p }))}
                 onQualify={qualify}
               />
             )}
@@ -247,6 +271,7 @@ function App() {
               playerTeamId={PLAYER_TEAM_ID}
               track={track}
               gridOrder={season.quali?.map((q) => q.carId)}
+              practice={practice}
               roundLabel={roundLabel}
               speed={speed}
               onSpeed={setSpeed}

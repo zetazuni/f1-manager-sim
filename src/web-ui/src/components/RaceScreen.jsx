@@ -7,7 +7,7 @@ import StartLights from './StartLights';
 import MiniMap from './MiniMap';
 import { playLightBeep, playLightsOut } from '../services/AudioManager';
 import SimulationEngine from '../services/SimulationEngine';
-import { createRace, startRace, step, snapshot, carPose, setStrategy, safetyCarPose, wetnessAt, order } from '../game/raceSim';
+import { createRace, startRace, step, snapshot, carPose, setStrategy, safetyCarPose, wetnessAt, order, setTeamOrder } from '../game/raceSim';
 
 // Race seconds per real second at "1x": one ~75 s lap in about 1.25 s.
 const BASE_SPEED = 60;
@@ -17,11 +17,11 @@ const SNAPSHOT_MS = 200;
  * One race of the season. Owns the simulation loop; reports the final
  * snapshot through onFinished when the player continues from the result.
  */
-const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, roundLabel, speed, onSpeed, quality, onFinished }) => {
+const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, practice = {}, roundLabel, speed, onSpeed, quality, onFinished }) => {
   // Cars are frozen for the race: upgrades bought mid-race arrive at the next round
   const [teams] = useState(teamsAtStart);
   const [firstRace] = useState(() => createRace({
-    teams, track, engine: new SimulationEngine(), playerTeamId, gridOrder,
+    teams, track, engine: new SimulationEngine(), playerTeamId, gridOrder, practice,
   }));
   const raceRef = useRef(firstRace);
   const carsRef = useRef([]);
@@ -121,6 +121,11 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
     setSnap(snapshot(raceRef.current));
   }, []);
 
+  const teamOrder = useCallback((o) => {
+    setTeamOrder(raceRef.current, playerTeamId, o);
+    setSnap(snapshot(raceRef.current));
+  }, [playerTeamId]);
+
   const finish = useCallback(() => {
     const race = raceRef.current;
     onFinished(snapshot(race), race.fastest?.carId || null);
@@ -141,6 +146,7 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, round
           onToggleRun={toggleRun}
           onSpeed={onSpeed}
           onStrategy={changeStrategy}
+          onTeamOrder={teamOrder}
           onRestart={finish}
           finishLabel="Continue"
           focusId={focusId}
