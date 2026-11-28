@@ -279,9 +279,9 @@ export function buildCar(app, color, accent = '#111827') {
     // monocoque, nose tapering in three steps
     mb.box({ pos: [0, 0.48, 0.1], scale: [0.72, 0.46, 2.4], color: body });
     // rounded nose tapering to the tip, over a flat underside
-    for (let i = 0; i < 16; i++) {
-      const t = i / 15;
-      mb.prism({ pos: [0, 0.44 - t * 0.14, 1.3 + t * 1.3], radius: 0.25 - t * 0.17, height: 0.1, sides: 14, color: body, rot: [90, 0, 0] });
+    for (let i = 0; i < 48; i++) {
+      const t = i / 47;
+      mb.prism({ pos: [0, 0.44 - t * 0.14, 1.3 + t * 1.3], radius: 0.25 - t * 0.17, height: 0.034, sides: 14, color: body, rot: [90, 0, 0] });
     }
     mb.box({ pos: [0, 0.3, 1.8], scale: [0.3, 0.06, 1.3], color: dark });
     mb.prism({ pos: [0, 0.76, -0.55], radius: 0.2, height: 0.7, sides: 14, color: body, rot: [90, 0, 0] });

@@ -174,7 +174,7 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 ## M22 3D team headquarters (2026-11-28)
 
 - Open-roofed campus in Team HQ (`game/hq.js`): wind tunnel, powertrain lab, composites floor, reliability rig, team hub and board room, in the team colours.
-- Navigator and automatic tour with camera cuts; clicking a department or buying an upgrade flies to its room.
+- Navigator and automatic tour with camera cuts; clicking a department or buying an upgrade cuts to its room with a slow push-in.
 - Fixed: the race view stayed blank after visiting another tab mid-race.
 - Without a graphics card the 3D views drop shadows and reflections and the previews redraw less often.
 
