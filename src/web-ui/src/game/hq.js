@@ -3,7 +3,7 @@
 // parts (fan, smoke, robot arm, dyno glow) are separate entities.
 
 import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, useMaterials } from './meshBuilder';
-import { buildCar, clearCarMeshCache } from './scene';
+import { buildCar } from './scene';
 
 const W = 26; // room width (x)
 const D = 20; // room depth (z)
@@ -41,7 +41,7 @@ export function shot(roomId, index = 0) {
   return { pos: [cx + pos[0], pos[1], cz + pos[2]], at: [cx + at[0], at[1], cz + at[2]], fov };
 }
 
-export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600' } = {}) {
+export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600', carId = '' } = {}) {
   useMaterials(app.graphicsDevice);
   const mb = new MeshBuilder();
   const glow = new MeshBuilder();
@@ -64,8 +64,7 @@ export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600' } = {}) {
     box(x, 1.05, z - 0.3, 0.1, 0.3, 0.1, '#334155');
   };
   const car = (x, y, z, yaw, scale = 1) => {
-    clearCarMeshCache();
-    const e = buildCar(app, color, accent);
+    const e = buildCar(app, color, accent, carId);
     e.setPosition(x, y, z);
     e.setEulerAngles(0, yaw, 0);
     e.setLocalScale(scale, scale, scale);
@@ -292,6 +291,5 @@ export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600' } = {}) {
       time += dt;
       moving.forEach((fn) => fn(time));
     },
-    dropCarCache: () => clearCarMeshCache(),
   };
 }

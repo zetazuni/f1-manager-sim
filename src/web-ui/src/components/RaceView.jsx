@@ -192,7 +192,7 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
         seen.add(c.id);
         let ent = carEntities.get(c.id);
         if (!ent) {
-          ent = c.id === 'safety-car' ? buildSafetyCar(app) : buildCar(app, c.color, c.accent);
+          ent = c.id === 'safety-car' ? buildSafetyCar(app) : buildCar(app, c.color, c.accent, c.id);
           carEntities.set(c.id, ent);
         }
         // ease toward the wanted lane so cars swing out smoothly instead of jumping

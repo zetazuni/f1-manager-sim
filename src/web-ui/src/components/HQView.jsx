@@ -21,6 +21,7 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
 
   const color = team?.color;
   const accent = team?.accent;
+  const teamId = team?.id;
   useEffect(() => {
     let stage;
     try {
@@ -31,7 +32,7 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
       setFailed(true);
       return undefined;
     }
-    const hq = buildHQ(stage.app, { color, accent });
+    const hq = buildHQ(stage.app, { color, accent, carId: teamId ? `${teamId}-0` : '' });
     const still = reducedMotion();
     const pos = [...shot('campus').pos];
     const at = [...shot('campus').at];
@@ -86,10 +87,9 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
     window.__zetraceHQ = () => ({ room: current, asked: roomRef.current, camera: pos.map((v) => Math.round(v)) }); // read-only test hook
     return () => {
       delete window.__zetraceHQ;
-      hq.dropCarCache();
       stage.destroy();
     };
-  }, [color, accent, quality]);
+  }, [color, accent, teamId, quality]);
 
   if (failed) return null;
   const info = ROOMS.find((r) => r.id === shown);

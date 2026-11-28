@@ -178,6 +178,16 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Fixed: the race view stayed blank after visiting another tab mid-race.
 - Without a graphics card the 3D views drop shadows and reflections and the previews redraw less often.
 
+## M23 Grass flicker and shortcut icon (2026-11-28)
+
+- Ground, mown bands and run-off are spaced apart, folded band pieces are dropped, and distant cameras use a further near plane.
+- The install script gives shortcuts a freshly named icon file so Windows shows the new emblem.
+
+## M24 Team liveries (2026-11-28)
+
+- Each team has base, second and third colours with a paint pattern (`game/liveries.js`), sponsor lettering and race numbers.
+- Cars gained more elements and rounder parts. Season packs can set `team.livery` and `driver.number`.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.
