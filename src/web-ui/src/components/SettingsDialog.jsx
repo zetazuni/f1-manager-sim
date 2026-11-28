@@ -21,7 +21,7 @@ const Choice = ({ label, value, options, onChange, testId }) => (
 );
 
 /**
- * Settings: graphics quality, sound, default race speed, career reset.
+ * Settings: graphics quality, sound, music, default race speed, career reset.
  * The reset asks twice inside the dialog (no browser popups).
  */
 const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) => {
@@ -44,6 +44,7 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
         />
         <p className="-mt-3 text-[11px] text-muted">Low turns shadows off and renders at standard resolution: use it on older laptops.</p>
         <Choice label="Sound" testId="sound" value={settings.sound} onChange={set('sound')} options={[{ value: true, label: 'On' }, { value: false, label: 'Off' }]} />
+        <Choice label="Lofi music" testId="music" value={settings.music} onChange={set('music')} options={[{ value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }, { value: 'off', label: 'Off' }]} />
         <Choice
           label="Default race speed"
           testId="speed"

@@ -140,6 +140,15 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Team picker for new careers; any number of teams; pit lane on either side per circuit.
 - Scenery, camera and fog scale with the circuit size. Flat maps now match the 3D view (they were mirrored).
 
+## M16 Driver faces (2026-11-28)
+
+- A season pack can give each driver a photo (`FACES`); they show beside names. The repository ships none.
+
+## M17 Lofi music (2026-11-28)
+
+- Three original lofi loops made in code (`services/MusicPlayer.js`), 32 bars each, starting on the first click.
+- Settings: Normal, Low or Off, separate from sound effects.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

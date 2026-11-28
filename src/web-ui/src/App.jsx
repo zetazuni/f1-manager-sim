@@ -14,6 +14,7 @@ import { startProject } from './game/factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './game/career';
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
+import { setMusicLevel } from './services/MusicPlayer';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -70,6 +71,7 @@ function App() {
   useEffect(() => {
     saveSettings(settings);
     setSoundEnabled(settings.sound);
+    setMusicLevel(settings.music);
   }, [settings]);
   // patch = only the changed fields; merged into the latest settings so quick
   // successive changes never overwrite each other

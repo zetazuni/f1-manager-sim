@@ -10,7 +10,7 @@ const KEY = `zetrace.career.v1${PACK_ID ? `.${PACK_ID}` : ''}`;
 const SETTINGS_KEY = 'zetrace.settings.v1';
 export const SAVE_VERSION = 1;
 
-export const DEFAULT_SETTINGS = { quality: 'high', sound: true, speed: 1 };
+export const DEFAULT_SETTINGS = { quality: 'high', sound: true, music: 'normal', speed: 1 };
 
 const store = () => {
   try {
