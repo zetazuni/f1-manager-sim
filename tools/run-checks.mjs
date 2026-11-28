@@ -31,6 +31,7 @@ const CHECKS = [
   ['m22-hq', '?notitle=1'],
   ['m22-tabs', '?notitle=1'],
   ['m27-oldsave', '?notitle=1'],
+  ['m28-placement', '?notitle=1'],
 ];
 
 const results = [];

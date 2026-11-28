@@ -6,10 +6,10 @@
     "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
   },
   {
-    "waitFor": "[data-upgrade=\"ersEfficiency-small\"]"
+    "waitFor": "[data-research=\"rearWing-small\"]"
   },
   {
-    "eval": "document.querySelector('[data-upgrade=\"ersEfficiency-small\"]').click(), 'buy'"
+    "eval": "document.querySelector('[data-research=\"rearWing-small\"]').click(), 'buy'"
   },
   {
     "eval": "document.querySelector('[data-tab=weekend]').click(), 'weekend'"

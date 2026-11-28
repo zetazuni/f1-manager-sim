@@ -112,6 +112,7 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
 
     // Weather: rain streaks, dimmer greyer light, glossy wet asphalt
     const rain = buildRain(app);
+    rain.entity.setLocalScale(reach, 1, reach); // cover the whole circuit
     const asphaltMat = circuit.findByName('asphalt')?.render?.meshInstances?.[0]?.material || null;
     const dryAsphalt = asphaltMat ? { diffuse: asphaltMat.diffuse.clone(), gloss: asphaltMat.gloss } : null;
     const drySky = col(theme.sky);
@@ -199,7 +200,10 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
         const lane = ent.lane === undefined ? (c.lane || 0) : ent.lane + ((c.lane || 0) - ent.lane) * Math.min(1, dt * 4);
         ent.lane = lane;
         const p = path.pointAt(c.lapFloat, lane);
-        ent.setLocalPosition(p.x, 0.05, p.z);
+        ent.setLocalPosition(p.x, p.y + 0.05, p.z);
+        // a little larger on the big overview so they stay readable
+        const size = lastMode === 'overview' ? 1.35 : 1;
+        ent.setLocalScale(size, size, size);
         ent.setLocalEulerAngles(0, p.heading, 0);
       });
       carEntities.forEach((ent, id) => {

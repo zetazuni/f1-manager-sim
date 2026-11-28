@@ -3,7 +3,8 @@ import { pitLayout } from './trackPath';
 import { GRID_SLOT_UNITS } from './raceSim';
 import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, materialCache, useMaterials, dropMaterials } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
-import { trackside, sponsorBoards, clearance } from './details';
+import { trackside, sponsorBoards, clearance, reservePit, bridgeWorks } from './details';
+import { createRegistry } from './placement';
 import { liveryOf, paint, inkOn, letteringMaterial, decal } from './liveries';
 
 export const TRACK_WIDTH = 7;
@@ -66,13 +67,13 @@ function ribbon(device, path, inner, outer, y, filter = () => true) {
     const a = points[i];
     const b = points[(i + 1) % n];
     const quad = [
-      [a.x + a.nx * inner, a.z + a.nz * inner],
-      [a.x + a.nx * outer, a.z + a.nz * outer],
-      [b.x + b.nx * inner, b.z + b.nz * inner],
-      [b.x + b.nx * outer, b.z + b.nz * outer],
+      [a.x + a.nx * inner, a.z + a.nz * inner, a.y],
+      [a.x + a.nx * outer, a.z + a.nz * outer, a.y],
+      [b.x + b.nx * inner, b.z + b.nz * inner, b.y],
+      [b.x + b.nx * outer, b.z + b.nz * outer, b.y],
     ];
-    quad.forEach(([x, z]) => {
-      positions.push(x, y, z);
+    quad.forEach(([x, z, h]) => {
+      positions.push(x, y + h, z);
       normals.push(0, 1, 0);
     });
     indices.push(v, v + 2, v + 1, v + 1, v + 2, v + 3);
@@ -99,7 +100,7 @@ function laneRibbon(device, path, fFrom, fTo, centreAt, width, y, steps = 120) {
     const c = centreAt(f);
     const a = path.pointAt(f, c - width / 2);
     const b = path.pointAt(f, c + width / 2);
-    positions.push(a.x, y, a.z, b.x, y, b.z);
+    positions.push(a.x, y + a.y, a.z, b.x, y + b.y, b.z);
     normals.push(0, 1, 0, 0, 1, 0);
     if (i < steps) {
       const v = i * 2;
@@ -248,10 +249,14 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   meshEntity(root, ribbon(device, path, -1.3, -0.35, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-l');
   meshEntity(root, ribbon(device, path, 0.35, 1.3, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-r');
   // barriers, boards, marshals, pit crews and trucks
-  trackside(mb, path, { teams, pit, grass: env !== 'city' && env !== 'night' });
-  sponsorBoards(app, root, path, teams, s);
+  const reg = createRegistry(path);
+  reservePit(reg, path, pit, Math.max(teams.length, 10));
+  bridgeWorks(mb, path, reg);
+  trackside(mb, path, reg, { teams, pit, grass: env !== 'city' && env !== 'night' });
+  sponsorBoards(app, root, path, reg, teams, s);
   // Grandstands, walls, trees, buildings, water, lights: depends on the circuit
-  buildEnvironment(mb, glow, path, env, seed, s);
+  buildEnvironment(mb, glow, path, env, seed, s, reg);
+  root.placement = reg; // read by the placement check
 
   const staticMesh = mb.build(device);
   if (staticMesh) root.addChild(meshToEntity(staticMesh, vertexColorMaterial(false), { name: 'static-scenery' }));

@@ -205,6 +205,11 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Nine facilities with three levels, building time and an effect each; HQ rooms show the level, new equipment and building sites, and the campus grows.
 - Save version 2: old careers convert and unfinished upgrades are refunded. AI teams use the same system.
 
+## M28 Room on the circuits (2026-11-28)
+
+- Circuits are 1.6 times larger and stretches that ran too close are eased apart (`game/trackSpread.js`); a figure of eight gets a bridge.
+- A footprint register (`game/placement.js`) gives every stand, board, post, truck and tree its own ground; `m28-placement` checks every circuit for overlaps and road intrusions.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

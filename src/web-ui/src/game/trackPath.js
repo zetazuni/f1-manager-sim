@@ -30,7 +30,10 @@ const catmullRom = (p0, p1, p2, p3, t) => {
   return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
 };
 
-export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 360) {
+const BRIDGE_HEIGHT = 4.5;
+const BRIDGE_RAMP = 55; // length of each ramp, in track units
+
+export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 0) {
   const n = controlPoints.length;
   const dense = [];
   const perSeg = 64;
@@ -53,6 +56,7 @@ export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 360) {
     cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
   const total = cum[cum.length - 1];
+  if (!samples) samples = Math.max(360, Math.round(total / 1.4));
 
   const sampleDense = (dist) => {
     let d = ((dist % total) + total) % total;
@@ -95,6 +99,32 @@ export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 360) {
     points[i].curvature = cross; // sign = turn direction, size = how sharp
   }
 
+  // Where the lap crosses itself, the later stretch goes over on a bridge
+  const rise = new Array(samples).fill(0);
+  const side = (a, b, c) => Math.sign((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x));
+  const apart = Math.ceil(60 / (total / samples));
+  for (let i = 0; i < samples; i++) {
+    for (let j = i + apart; j < samples; j++) {
+      const a = points[i];
+      const b = points[(i + 1) % samples];
+      const c = points[j];
+      const d = points[(j + 1) % samples];
+      if (samples - (j - i) < apart) continue; // neighbours across the start line
+      // a real crossing: each stretch has its ends strictly on opposite sides of the other
+      if (side(a, b, c) * side(a, b, d) >= 0 || side(c, d, a) * side(c, d, b) >= 0) continue;
+      for (let k = 0; k < samples; k++) {
+        const gap = Math.min(Math.abs(k - j), samples - Math.abs(k - j)) * (total / samples);
+        if (gap < BRIDGE_RAMP) rise[k] = Math.max(rise[k], BRIDGE_HEIGHT * Math.cos((gap / BRIDGE_RAMP) * (Math.PI / 2)) ** 2);
+      }
+    }
+  }
+  points.forEach((p, i) => { p.y = rise[i]; });
+  const heightAt = (d) => {
+    const k = (d / total) * samples;
+    const i = Math.floor(k) % samples;
+    return rise[i] + (rise[(i + 1) % samples] - rise[i]) * (k - Math.floor(k));
+  };
+
   /** Position on the racing line at lap fraction f (any real number, wraps). */
   const pointAt = (f, lateral = 0) => {
     const d = (((f % 1) + 1) % 1) * total;
@@ -106,6 +136,7 @@ export function makeTrackPath(controlPoints = DEFAULT_CIRCUIT, samples = 360) {
     tx /= len; tz /= len;
     return {
       x: x - tz * lateral,
+      y: heightAt(d),
       z: z + tx * lateral,
       heading: (Math.atan2(tx, tz) * 180) / Math.PI, // yaw in degrees, +Z forward
     };

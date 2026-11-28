@@ -51,7 +51,7 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
       if (mode === 'fly') {
         const from = path.pointAt(lap - 14 / path.total);
         const to = path.pointAt(lap + 22 / path.total);
-        stage.look([from.x, 11, from.z], [to.x, 0, to.z], 58);
+        stage.look([from.x, from.y + 11, from.z], [to.x, to.y, to.z], 58);
       } else if (mode === 'top') {
         stage.look([mid[0], radius * 2.9, mid[2] + 1], mid, 42);
       } else {

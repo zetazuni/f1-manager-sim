@@ -57,13 +57,14 @@ function trackDistance(path, x, z) {
   return Math.sqrt(best);
 }
 
-/** Scatter `count` items; `place(x, z, rng)` is called for spots clear of the track. */
-function scatter(path, rng, count, minDist, area, place, avoid = () => false) {
+/** Scatter `count` items of footprint `size`; each claims its ground first. */
+function scatter(path, rng, count, minDist, area, place, reg, size = 2) {
   let placed = 0;
   for (let tries = 0; tries < count * 6 && placed < count; tries++) {
     const x = area.x0 + rng() * (area.x1 - area.x0);
     const z = area.z0 + rng() * (area.z1 - area.z0);
-    if (trackDistance(path, x, z) < minDist || avoid(x, z)) continue;
+    if (trackDistance(path, x, z) < minDist) continue;
+    if (!reg.take([[x, z, size]], 'scenery', 2)) continue;
     place(x, z, rng);
     placed++;
   }
@@ -128,48 +129,14 @@ const boat = (mb, x, z, rng) => {
   mb.box({ pos: [x, 1, z], scale: [1.4, 0.8, 2.2], rot: [0, yaw, 0], color: '#0ea5e9' });
 };
 
-/**
- * Grandstands along the main straight on the infield side, facing the track,
- * with a crowd and a roof; plus sponsor boards along the outside barrier.
- */
-function grandstands(mb, path, rng, pitSide) {
-  const stand = (fFrom, fTo, lateral) => {
-    const a = path.pointAt(fFrom, lateral);
-    const b = path.pointAt(fTo, lateral);
-    const len = Math.hypot(b.x - a.x, b.z - a.z);
-    const yaw = (Math.atan2(b.x - a.x, b.z - a.z) * 180) / Math.PI;
-    const mid = { pos: [(a.x + b.x) / 2, 0, (a.z + b.z) / 2], rot: [0, yaw + (pitSide > 0 ? 180 : 0), 0] };
-    // Local axes after the yaw: +Z along the track, +X points back towards the
-    // track for a stand on the infield (+lateral) side, so rows rise along -X.
-    for (let row = 0; row < 5; row++) {
-      const h = 1.2 + row * 0.9;
-      mb.box({ pos: [-row * 1.3, h / 2, 0], scale: [1.4, h, len], color: row % 2 ? '#334155' : '#3f4b5e' }, mid);
-      const seats = Math.floor(len / 0.9);
-      for (let i = 0; i < seats; i++) {
-        if (rng() < 0.18) continue;
-        mb.box({ pos: [-row * 1.3 + 0.1, h + 0.25, -len / 2 + 0.45 + i * 0.9], scale: [0.45, 0.5, 0.45], color: CROWD[Math.floor(rng() * CROWD.length)] }, mid);
-      }
-    }
-    mb.box({ pos: [-3.2, 6.9, 0], scale: [8, 0.3, len + 1], rot: [0, 0, 6], color: '#e5e7eb' }, mid);
-    for (const zz of [-len / 2, 0, len / 2]) mb.box({ pos: [-6.4, 3.4, zz], scale: [0.3, 6.8, 0.3], color: '#94a3b8' }, mid);
-  };
-  stand(0.02, 0.09, -pitSide * 11.5);
-  stand(0.1, 0.16, -pitSide * 11.5);
-  // sponsor boards on the outside of the first corner exit and back straight
-  for (let i = 0; i < 18; i++) {
-    const f = 0.25 + i * 0.035;
-    const p = path.pointAt(f, pitSide * (3.5 + 3.6));
-    mb.box({ pos: [p.x, 0.55, p.z], scale: [0.25, 1.1, 3.4], rot: [0, p.heading, 0], color: SPONSORS[i % SPONSORS.length] });
-  }
-}
-
 /** Concrete street-circuit walls with a coloured top stripe, both sides. */
-function streetWalls(mb, path, pitSide) {
+function streetWalls(mb, path, pitSide, reg) {
   const n = path.points.length;
   for (let i = 0; i < n; i += 2) {
     const f = i / n;
     for (const side of [1, -1]) {
       const p = path.pointAt(f + 1 / n, side * (3.5 + 2.2));
+      if (p.y > 0.1 || trackDistance(path, p.x, p.z) < 3.5 + 1.2) continue; // would stand on another stretch
       // leave the pit entry and exit open
       if (side === pitSide && (f < 0.2 || f > 0.97)) continue;
       const seg = (2 * path.total) / n;
@@ -185,7 +152,7 @@ function streetWalls(mb, path, pitSide) {
  * @param glow MeshBuilder for self-lit geometry (lamps, windows)
  * @param water optional callback(x, z, w, d) to place a water plane
  */
-export function buildEnvironment(mb, glow, path, envKey, seed = 3, pitSide = -1) {
+export function buildEnvironment(mb, glow, path, envKey, seed, pitSide, reg) {
   const env = ENVIRONMENTS[envKey] || ENVIRONMENTS.forest;
   const rng = seeded(seed);
   const xs = path.points.map((p) => p.x);
@@ -198,30 +165,26 @@ export function buildEnvironment(mb, glow, path, envKey, seed = 3, pitSide = -1)
   const shore = Math.max(58, bx.z1 + 24); // beach line for coastal circuits
   const far = Math.max(100, bx.z1 + 55); // mountain line
   // keep the paddock (behind the garages) and grandstand strip free
-  const paddock = [];
-  for (let k = 0; k <= 8; k++) paddock.push(path.pointAt((6 + 54 * (k / 8)) / path.total, pitSide * 16));
-  const inPaddock = (x, z) => paddock.some((p) => Math.hypot(p.x - x, p.z - z) < 11);
 
-  grandstands(mb, path, rng, pitSide);
-  if (env.walls) streetWalls(mb, path, pitSide);
+  if (env.walls) streetWalls(mb, path, pitSide, reg);
 
 
   switch (envKey) {
     case 'desert':
-      scatter(path, rng, many(18), 22, area, (x, z, r) => mb.frustum({ pos: [x, -0.3, z], rBottom: 9 + r() * 8, rTop: 3, height: 2 + r() * 3, sides: 7, color: '#e6c78c', colorTop: '#f0d6a0', spin: r() * 3 }), inPaddock);
-      scatter(path, rng, many(40), 12, area, (x, z, r) => palm(mb, x, z, 1 + r() * 0.6, r), inPaddock);
-      scatter(path, rng, many(30), 10, area, (x, z, r) => rock(mb, x, z, 0.8 + r(), r), inPaddock);
+      scatter(path, rng, many(18), 22, area, (x, z, r) => mb.frustum({ pos: [x, -0.3, z], rBottom: 9 + r() * 8, rTop: 3, height: 2 + r() * 3, sides: 7, color: '#e6c78c', colorTop: '#f0d6a0', spin: r() * 3 }), reg, 12);
+      scatter(path, rng, many(40), 12, area, (x, z, r) => palm(mb, x, z, 1 + r() * 0.6, r), reg, 2);
+      scatter(path, rng, many(30), 10, area, (x, z, r) => rock(mb, x, z, 0.8 + r(), r), reg, 1.8);
       break;
     case 'city':
     case 'night': {
       const night = envKey === 'night';
-      scatter(path, rng, many(night ? 60 : 70), 18, area, (x, z, r) => building(mb, glow, x, z, r, night, trackDistance(path, x, z)), inPaddock);
+      scatter(path, rng, many(night ? 60 : 70), 18, area, (x, z, r) => building(mb, glow, x, z, r, night, trackDistance(path, x, z)), reg, 9);
       if (night) {
         // floodlights all round the lap
         for (let i = 0; i < 26; i++) {
           const f = i / 26 + 0.01;
           const p = path.pointAt(f, (i % 2 ? 1 : -1) * 9.5);
-          if (trackDistance(path, p.x, p.z) < 8) continue;
+          if (!reg.take([[p.x, p.z, 1.4]], 'floodlight', 3)) continue;
           lightTower(mb, glow, p.x, p.z);
         }
         // neon strip along the start straight
@@ -230,7 +193,7 @@ export function buildEnvironment(mb, glow, path, envKey, seed = 3, pitSide = -1)
           glow.box({ pos: [p.x, 0.2, p.z], scale: [0.15, 0.15, 2.5], rot: [0, p.heading, 0], color: i % 2 ? '#22d3ee' : '#e879f9' });
         }
       } else {
-        scatter(path, rng, many(25), 11, area, (x, z, r) => broadleaf(mb, x, z, 0.8 + r() * 0.4, r), inPaddock);
+        scatter(path, rng, many(25), 11, area, (x, z, r) => broadleaf(mb, x, z, 0.8 + r() * 0.4, r), reg, 2);
       }
       break;
     }
@@ -241,17 +204,17 @@ export function buildEnvironment(mb, glow, path, envKey, seed = 3, pitSide = -1)
       mb.box({ pos: [0, -0.26, shore], scale: [600, 0.6, 7], color: '#e8d6a6' });
       for (let i = 0; i < 14; i++) mb.box({ pos: [-160 + i * 24, 0.03, shore + 4 + (i % 3) * 3], scale: [10, 0.02, 0.5], color: '#e0f2fe' }); // surf lines
       for (let i = 0; i < 9; i++) boat(mb, -100 + rng() * 200, shore + 14 + rng() * 30, rng);
-      scatter(path, rng, many(45), 11, { ...area, z1: shore - 6 }, (x, z, r) => palm(mb, x, z, 0.9 + r() * 0.5, r), inPaddock);
+      scatter(path, rng, many(45), 11, { ...area, z1: shore - 6 }, (x, z, r) => palm(mb, x, z, 0.9 + r() * 0.5, r), reg, 2);
       break;
     }
     case 'alpine':
       for (let i = 0; i < 9; i++) mountain(mb, -110 + i * 28 + rng() * 10, far + rng() * 15, 1 + rng() * 0.6, rng);
       for (let i = 0; i < 5; i++) mountain(mb, Math.min(-120, bx.x0 - 40) + rng() * 10, -40 + i * 30, 0.9 + rng() * 0.5, rng);
-      scatter(path, rng, many(80), 11, { ...area, z1: far - 20 }, (x, z, r) => pine(mb, x, z, 0.9 + r() * 0.6, r() < 0.25), inPaddock);
+      scatter(path, rng, many(80), 11, { ...area, z1: far - 20 }, (x, z, r) => pine(mb, x, z, 0.9 + r() * 0.6, r() < 0.25), reg, 1.9);
       break;
     default: // forest
-      scatter(path, rng, many(50), 11, area, (x, z, r) => pine(mb, x, z, 0.9 + r() * 0.5), inPaddock);
-      scatter(path, rng, many(45), 11, area, (x, z, r) => broadleaf(mb, x, z, 0.9 + r() * 0.5, r), inPaddock);
+      scatter(path, rng, many(50), 11, area, (x, z, r) => pine(mb, x, z, 0.9 + r() * 0.5), reg, 1.9);
+      scatter(path, rng, many(45), 11, area, (x, z, r) => broadleaf(mb, x, z, 0.9 + r() * 0.5, r), reg, 2);
   }
   return env;
 }
