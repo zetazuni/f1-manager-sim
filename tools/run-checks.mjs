@@ -27,11 +27,18 @@ const CHECKS = [
   ['m8-market', '?round=6'],
   ['m9-cameras', '?notitle=1'],
   ['m10-title', ''],
+  ['m20-calendar', '?notitle=1'],
+  ['m22-hq', '?notitle=1'],
+  ['m22-tabs', '?notitle=1'],
+  ['m27-oldsave', '?notitle=1'],
+  ['m28-placement', '?notitle=1'],
 ];
 
 const results = [];
 const tracks = spawnSync(process.execPath, [path.join(here, 'validate-tracks.mjs')], { encoding: 'utf8' });
 results.push(['validate-tracks', tracks.status === 0, tracks.status === 0 ? '6 layouts OK' : tracks.stdout.trim()]);
+const campus = spawnSync(process.execPath, [path.join(here, 'validate-campus.mjs')], { encoding: 'utf8' });
+results.push(['validate-campus', campus.status === 0, campus.stdout.trim().slice(6)]);
 
 const only = process.argv[4] ? process.argv[4].split(',') : null;
 for (const [name, query] of CHECKS) {

@@ -24,6 +24,7 @@ const MiniMap = ({ carsRef, points, focusId }) => {
     const minY = Math.min(...ys) - pad;
     return {
       path,
+      k: Math.max(1, (Math.max(...xs) - Math.min(...xs)) / 150),
       viewBox: `${minX} ${minY} ${Math.max(...xs) + pad - minX} ${Math.max(...ys) + pad - minY}`,
       d: `${path.points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.z.toFixed(1)}`).join(' ')} Z`,
     };
@@ -46,8 +47,8 @@ const MiniMap = ({ carsRef, points, focusId }) => {
           dot = document.createElementNS(SVGNS, 'circle');
           dot.setAttribute('fill', c.id === 'safety-car' ? '#f59e0b' : c.color);
           dot.setAttribute('stroke', c.isPlayer ? '#22d3ee' : '#05080f');
-          dot.setAttribute('stroke-width', c.isPlayer ? '1.8' : '0.8');
-          dot.setAttribute('r', c.isPlayer || c.id === 'safety-car' ? '3.2' : '2.4');
+          dot.setAttribute('stroke-width', String((c.isPlayer ? 1.8 : 0.8) * geo.k));
+          dot.setAttribute('r', String((c.isPlayer || c.id === 'safety-car' ? 3.2 : 2.4) * geo.k));
           dots.set(c.id, dot);
         }
         g.appendChild(dot); // re-append keeps draw order
@@ -74,8 +75,8 @@ const MiniMap = ({ carsRef, points, focusId }) => {
   return (
     <div className="pointer-events-none absolute bottom-8 right-3 z-hud w-40 rounded-lg border border-line bg-ink/75 p-2 backdrop-blur sm:w-48" data-testid="minimap">
       <svg viewBox={geo.viewBox} className="h-auto w-full" aria-label="Live track map">
-        <path d={geo.d} fill="none" stroke="#334155" strokeWidth="5" strokeLinejoin="round" />
-        <path d={geo.d} fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeLinejoin="round" />
+        <path d={geo.d} fill="none" stroke="#334155" strokeWidth={5 * geo.k} strokeLinejoin="round" />
+        <path d={geo.d} fill="none" stroke="#94a3b8" strokeWidth={1.2 * geo.k} strokeLinejoin="round" />
         <g ref={dotsRef} />
       </svg>
     </div>

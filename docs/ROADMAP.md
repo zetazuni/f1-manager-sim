@@ -124,7 +124,7 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 
 ## M13 One-click desktop app (2026-11-28)
 
-- Tauri 2 wrapper (`src/web-ui/src-tauri`): the game runs in its own window, maximised, with an app icon (`tools/make-icon.py`).
+- Tauri 2 wrapper (`src/web-ui/src-tauri`): the game runs in its own window, maximised, with an app icon.
 - Splash screen while the 3D engine loads (`public/splash.html`); the game closes it once its first screen is ready, with a 10 s fallback.
 - `tools/install-desktop.ps1` builds the exe, copies it to `Zetrace App` and adds desktop and Start menu shortcuts.
 - Desktop saves are separate from browser saves (different web origin).
@@ -153,6 +153,67 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 
 - Cars: bargeboards, mirrors, wishbones, wing elements, rain light, sidewall rings and rims.
 - Trackside (`game/details.js`): rubbered line, tyre walls, gravel traps, braking boards, catch fence, marshal posts, pit crews, team trucks, a big screen and lettered sponsor boards.
+
+## M19 New emblem (2026-11-28)
+
+- A racing-shield Z with rev ticks, speed lines and a chequered fragment (`public/logo.svg`, small version `public/favicon.svg`).
+- Used on the title screen, header, splash and app icon (`npx tauri icon src-tauri/app-icon.png`).
+
+## M20 Race week and calendar (2026-11-28)
+
+- 3D circuit view (`CircuitView`): orbit, flyover, from above, or the flat map.
+- Weekend briefing: our drivers, title race, sponsor objective and records at this circuit.
+- Calendar cards open a track preview with records. Records are kept per circuit in the career; a season pack can add real past results (`TRACK_HISTORY`).
+
+## M21 Track and car detail (2026-11-28)
+
+- Corner grandstands with crowds, roofs and flags, mown grass bands, footbridges and floodlight poles.
+- Longer, softer shadows; painted-sky reflections on paint and asphalt (High quality only, not true mirrors).
+- Cars: rounder tyres, tapered nose, rounded engine cover and sidepods, helmet visor and curved halo.
+
+## M22 3D team headquarters (2026-11-28)
+
+- Open-roofed campus in Team HQ (`game/hq.js`): wind tunnel, powertrain lab, composites floor, reliability rig, team hub and board room, in the team colours.
+- Navigator and automatic tour with camera cuts; clicking a department or buying an upgrade cuts to its room with a slow push-in.
+- Fixed: the race view stayed blank after visiting another tab mid-race.
+- Without a graphics card the 3D views drop shadows and reflections and the previews redraw less often.
+
+## M23 Grass flicker and shortcut icon (2026-11-28)
+
+- Ground, mown bands and run-off are spaced apart, folded band pieces are dropped, and distant cameras use a further near plane.
+- The install script gives shortcuts a freshly named icon file so Windows shows the new emblem.
+
+## M24 Team liveries (2026-11-28)
+
+- Each team has base, second and third colours with a paint pattern (`game/liveries.js`), sponsor lettering and race numbers.
+- Cars gained more elements and rounder parts. Season packs can set `team.livery` and `driver.number`.
+
+## M25 Headquarters as a facility (2026-11-28)
+
+- Campus view from the air (`game/hqCampus.js`), slowly circling: curved glass building with a lake, workshop, glazed bridge, roundabout, car parks, walkways, woodland, shuttles and staff.
+- Nine departments (`game/hqRooms.js`), new: atrium, race bay and race simulator. Glass walls, upper office floor, side walkways, slatted ceiling.
+- Only the department in view is switched on. Walking, working and cheering people; moving simulator platform with a live road screen.
+
+## M26 Campus roundabout (2026-11-28)
+
+- Road and footpath layout moved to `game/hqLayout.js`; footpaths no longer touch any road and walkers keep to them (`tools/validate-campus.mjs`).
+
+## M27 Parts, spares and facilities (2026-11-28)
+
+- Six parts (front wing, rear wing, underfloor, sidepods, suspension, chassis): research, then manufacturing 2 to 4 copies. Crashes destroy parts; with no spare that car runs the old or a repaired part.
+- The simulation's six car numbers are derived from the season's base plus what parts add; power unit and ERS are supplier-fixed.
+- Nine facilities with three levels, building time and an effect each; HQ rooms show the level, new equipment and building sites, and the campus grows.
+- Save version 2: old careers convert and unfinished upgrades are refunded. AI teams use the same system.
+
+## M28 Room on the circuits (2026-11-28)
+
+- Circuits are 1.6 times larger and stretches that ran too close are eased apart (`game/trackSpread.js`); a figure of eight gets a bridge.
+- A footprint register (`game/placement.js`) gives every stand, board, post, truck and tree its own ground; `m28-placement` checks every circuit for overlaps and road intrusions.
+
+## M29 Circuit landmarks (2026-11-28)
+
+- Generic landmark builders (`game/landmarks.js`): wheel, towers, harbour, lake, dome, stadium, skyline, walls, tunnel, hotel over the road, banking, dunes and more.
+- A calendar entry lists its landmarks; the placement check requires each to be placed. Flat tracks cannot show elevation.
 
 ## Ideas for later
 

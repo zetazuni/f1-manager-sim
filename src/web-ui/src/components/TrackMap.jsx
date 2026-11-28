@@ -25,15 +25,15 @@ const TrackMap = ({ points, className = '', stroke = '#e2e8f0', width = 5, showP
     const s = path.pointAt(0);
     const sn = path.pointAt(0, 6);
     const sp = path.pointAt(0, -6);
-    return { d, pitD: pitPts.join(' '), viewBox: `${minX} ${minY} ${w} ${h}`, start: { x1: sn.x, y1: sn.z, x2: sp.x, y2: sp.z }, s };
+    return { d, pitD: pitPts.join(' '), k: Math.max(w, h) / 150, viewBox: `${minX} ${minY} ${w} ${h}`, start: { x1: sn.x, y1: sn.z, x2: sp.x, y2: sp.z }, s };
   }, [points, pitSide]);
 
   return (
     <svg viewBox={geo.viewBox} className={className} role="img" aria-label={title || 'Track map'}>
-      <path d={geo.d} fill="none" stroke="#000" strokeOpacity="0.35" strokeWidth={width + 4} strokeLinejoin="round" />
-      <path d={geo.d} fill="none" stroke={stroke} strokeWidth={width} strokeLinejoin="round" />
-      {showPit && <path d={geo.pitD} fill="none" stroke="#facc15" strokeWidth={width * 0.35} strokeDasharray="3 2" />}
-      <line {...geo.start} stroke="#e10600" strokeWidth={width * 0.8} strokeLinecap="round" />
+      <path d={geo.d} fill="none" stroke="#000" strokeOpacity="0.35" strokeWidth={(width + 4) * geo.k} strokeLinejoin="round" />
+      <path d={geo.d} fill="none" stroke={stroke} strokeWidth={width * geo.k} strokeLinejoin="round" />
+      {showPit && <path d={geo.pitD} fill="none" stroke="#facc15" strokeWidth={width * 0.35 * geo.k} strokeDasharray={`${3 * geo.k} ${2 * geo.k}`} />}
+      <line {...geo.start} stroke="#e10600" strokeWidth={width * 0.8 * geo.k} strokeLinecap="round" />
     </svg>
   );
 };

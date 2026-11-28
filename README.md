@@ -15,7 +15,7 @@ All teams, drivers and circuits are fictional.
 - **Race drama**: rain spells with a radar forecast, spins and crashes, safety car.
 - **Season**: 6 circuits with their own layouts and environments, practice
   programmes, qualifying, points, driver and constructor championships.
-- **Team HQ**: car development projects, budget, sponsors, prize money; AI teams develop too.
+- **Team HQ**: research and build car parts, keep spares for crashes, upgrade nine facilities you can walk through in 3D; AI teams develop too.
 - **Careers**: driver ageing, contracts, a driver market, regulation resets, more seasons.
 - **Presentation**: Overview, Chase and TV cameras, live mini-map, start lights,
   pit wall themed interface, autosave, settings.

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import TrackMap from './TrackMap';
+import Logo from './Logo';
 import { CALENDAR, DISCLAIMER, GRID_TEAMS, PLAYER_TEAM_ID } from '../data/season';
 
 /** Opening screen: continue the saved career or start a new one. */
@@ -16,7 +17,7 @@ const TitleScreen = ({ saveInfo, onContinue, onNew }) => {
     <div className="pointer-events-none absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-rose/15 blur-3xl" />
 
     <div className="relative w-full max-w-xl text-center">
-      <div className="lamp-glow mx-auto mb-6 grid h-20 w-20 place-items-center rounded-3xl bg-f1-red font-display text-5xl font-bold">Z</div>
+      <Logo className="mx-auto mb-4 h-32 w-32 drop-shadow-[0_0_34px_rgba(225,6,0,0.5)]" />
       <h1 className="display bg-gradient-to-b from-cream via-cream to-lantern bg-clip-text pb-2 text-7xl text-transparent sm:text-8xl">Zetrace</h1>
       <p className="font-display text-base font-medium text-muted">an F1 manager for quiet evenings</p>
       <p className="mx-auto mt-6 max-w-md text-cream/75">

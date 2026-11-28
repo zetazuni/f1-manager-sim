@@ -1,9 +1,12 @@
 import * as pc from 'playcanvas';
 import { pitLayout } from './trackPath';
 import { GRID_SLOT_UNITS } from './raceSim';
-import { MeshBuilder, vertexColorMaterial, glowMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
+import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, materialCache, useMaterials, dropMaterials } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
-import { trackside, sponsorBoards } from './details';
+import { trackside, sponsorBoards, clearance, reservePit, bridgeWorks } from './details';
+import { createRegistry } from './placement';
+import { buildLandmarks } from './landmarks';
+import { liveryOf, paint, inkOn, letteringMaterial, decal } from './liveries';
 
 export const TRACK_WIDTH = 7;
 
@@ -13,10 +16,10 @@ const hex = (h) => {
   return c;
 };
 
-const matCache = new Map();
 /** Shared, cached material per colour (one material per colour, not per box). */
 export function material(color, { emissive = null, gloss = 0.35, metalness = 0, twoSided = false } = {}) {
   const key = `${color}|${emissive}|${gloss}|${metalness}|${twoSided}`;
+  const matCache = materialCache();
   if (matCache.has(key)) return matCache.get(key);
   const m = new pc.StandardMaterial();
   m.diffuse = hex(color);
@@ -31,9 +34,8 @@ export function material(color, { emissive = null, gloss = 0.35, metalness = 0, 
 }
 // Called after app.destroy(): the device has already released GPU resources,
 // so only drop the references (destroying here would touch a dead device).
-export const clearMaterialCache = () => {
-  matCache.clear();
-  clearVertexColorMaterials();
+export const clearMaterialCache = (device) => {
+  dropMaterials(device);
 };
 
 export function box(parent, { pos, scale, color, rot = [0, 0, 0], shadows = true, mat = null }) {
@@ -66,13 +68,13 @@ function ribbon(device, path, inner, outer, y, filter = () => true) {
     const a = points[i];
     const b = points[(i + 1) % n];
     const quad = [
-      [a.x + a.nx * inner, a.z + a.nz * inner],
-      [a.x + a.nx * outer, a.z + a.nz * outer],
-      [b.x + b.nx * inner, b.z + b.nz * inner],
-      [b.x + b.nx * outer, b.z + b.nz * outer],
+      [a.x + a.nx * inner, a.z + a.nz * inner, a.y],
+      [a.x + a.nx * outer, a.z + a.nz * outer, a.y],
+      [b.x + b.nx * inner, b.z + b.nz * inner, b.y],
+      [b.x + b.nx * outer, b.z + b.nz * outer, b.y],
     ];
-    quad.forEach(([x, z]) => {
-      positions.push(x, y, z);
+    quad.forEach(([x, z, h]) => {
+      positions.push(x, y + h, z);
       normals.push(0, 1, 0);
     });
     indices.push(v, v + 2, v + 1, v + 1, v + 2, v + 3);
@@ -99,7 +101,7 @@ function laneRibbon(device, path, fFrom, fTo, centreAt, width, y, steps = 120) {
     const c = centreAt(f);
     const a = path.pointAt(f, c - width / 2);
     const b = path.pointAt(f, c + width / 2);
-    positions.push(a.x, y, a.z, b.x, y, b.z);
+    positions.push(a.x, y + a.y, a.z, b.x, y + b.y, b.z);
     normals.push(0, 1, 0, 0, 1, 0);
     if (i < steps) {
       const v = i * 2;
@@ -122,7 +124,8 @@ function meshEntity(parent, mesh, mat, name) {
   return e;
 }
 
-export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1 } = {}) {
+export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1, landmarks = [] } = {}) {
+  useMaterials(app.graphicsDevice);
   const theme = ENVIRONMENTS[env] || ENVIRONMENTS.forest;
   const device = app.graphicsDevice;
   const root = new pc.Entity('circuit');
@@ -133,7 +136,7 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const glow = new MeshBuilder();
 
   // Grass and run-off
-  box(root, { pos: [0, -0.5, 0], scale: [900, 1, 900], color: theme.ground, shadows: false });
+  box(root, { pos: [0, -0.58, 0], scale: [2400, 1, 2400], color: theme.ground, shadows: false }); // top at -0.08
   // Ribbon materials are two-sided so the triangle winding never hides a strip
   meshEntity(root, ribbon(device, path, -half - 3, half + 3, 0.01), material(theme.runoff, { gloss: 0.1, twoSided: true }), 'runoff');
 
@@ -233,14 +236,30 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
   const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
+  // mown bands in the grass beside the run-off
+  if (env !== 'city' && env !== 'night' && env !== 'desert') {
+    // skip pieces that would fold over on the inside of a bend or lie on another part of the lap
+    const clear = path.points.map((p) => [1, -1].every((sd) => clearance(path, p.x + p.nx * sd * (half + 8), p.z + p.nz * sd * (half + 8)) > half + 5.5));
+    const band = (i) => Math.floor(i / 4) % 2 === 0 && clear[i];
+    const mown = material(theme.ground2, { gloss: 0.05, twoSided: true });
+    meshEntity(root, ribbon(device, path, half + 3, half + 8, -0.035, band), mown, 'mown-l');
+    meshEntity(root, ribbon(device, path, -half - 8, -half - 3, -0.035, band), mown, 'mown-r');
+  }
+
   // rubber laid down along the middle of the road
   meshEntity(root, ribbon(device, path, -1.3, -0.35, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-l');
   meshEntity(root, ribbon(device, path, 0.35, 1.3, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-r');
   // barriers, boards, marshals, pit crews and trucks
-  trackside(mb, path, { teams, pit, grass: env !== 'city' && env !== 'night' });
-  sponsorBoards(app, root, path, teams, s);
+  const reg = createRegistry(path);
+  reservePit(reg, path, pit, Math.max(teams.length, 10));
+  bridgeWorks(mb, path, reg);
+  // landmarks get the ground first: everything else fits round them
+  root.landmarks = buildLandmarks(mb, glow, path, reg, landmarks);
+  trackside(mb, path, reg, { teams, pit, grass: env !== 'city' && env !== 'night' });
+  sponsorBoards(app, root, path, reg, teams, s);
   // Grandstands, walls, trees, buildings, water, lights: depends on the circuit
-  buildEnvironment(mb, glow, path, env, seed, s);
+  buildEnvironment(mb, glow, path, env, seed, s, reg);
+  root.placement = reg; // read by the placement check
 
   const staticMesh = mb.build(device);
   if (staticMesh) root.addChild(meshToEntity(staticMesh, vertexColorMaterial(false), { name: 'static-scenery' }));
@@ -252,90 +271,135 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
 
 
 /**
- * Low-poly F1 car, about 5 units long, nose pointing +Z, baked into ONE mesh.
- * `color` = team livery, `accent` = second livery colour.
+ * F1 car, about 5 units long, nose pointing +Z. The body is one mesh per
+ * livery and device; lettering and the race number are small decals on top.
+ * `carId` ("team-seat") picks the livery; without it the two colours are used.
  */
-const carMeshCache = new Map();
-export function buildCar(app, color, accent = '#111827') {
-  const key = `${color}|${accent}`;
-  let mesh = carMeshCache.get(key);
-  if (!mesh || mesh.device !== app.graphicsDevice) {
+export function buildCar(app, color, accent = '#111827', carId = '') {
+  useMaterials(app.graphicsDevice);
+  const livery = liveryOf(carId, color, accent);
+  const c = paint(livery);
+  const cache = materialCache();
+  const key = `#car|${livery.key}`;
+  let mesh = cache.get(key);
+  if (!mesh || !mesh.vertexBuffer) {
     const mb = new MeshBuilder();
-    const body = color;
-    const trim = accent;
     const dark = '#121418';
+    const carbon = '#1b1d22';
     const tyre = '#16171a';
-    // floor
-    mb.box({ pos: [0, 0.2, -0.1], scale: [1.55, 0.08, 4.0], color: dark });
-    // monocoque, nose tapering in three steps
-    mb.box({ pos: [0, 0.48, 0.1], scale: [0.72, 0.46, 2.4], color: body });
-    mb.box({ pos: [0, 0.42, 1.55], scale: [0.5, 0.32, 0.8], color: body });
-    mb.box({ pos: [0, 0.34, 2.15], scale: [0.34, 0.2, 0.6], color: body, rot: [-5, 0, 0] });
-    // plank, bargeboards, mirrors and T-camera
+    const trim = livery.second;
+    const tube = (pos, radius, height, color, sides = 18) => mb.prism({ pos, radius, height, sides, color, rot: [90, 0, 0] });
+    // floor with raised edges, plank and diffuser fins
+    mb.box({ pos: [0, 0.2, -0.1], scale: [1.55, 0.06, 4.0], color: dark });
     mb.box({ pos: [0, 0.13, -0.1], scale: [0.4, 0.05, 3.6], color: '#8b5a2b' });
     for (const sx of [1, -1]) {
-      mb.box({ pos: [0.52 * sx, 0.36, 1.0], scale: [0.04, 0.3, 0.5], color: dark, rot: [0, 14 * sx, 0] });
-      mb.box({ pos: [0.78 * sx, 0.27, 0.45], scale: [0.05, 0.14, 0.7], color: trim });
-      mb.box({ pos: [0.52 * sx, 0.78, 0.82], scale: [0.2, 0.1, 0.07], color: body });
-      mb.box({ pos: [0.42 * sx, 0.72, 0.82], scale: [0.14, 0.03, 0.03], color: dark });
-      // wishbones out to each wheel, front and rear
-      for (const [z, y] of [[1.45, 0.52], [1.45, 0.26], [-1.35, 0.54], [-1.35, 0.28]]) {
-        mb.box({ pos: [0.56 * sx, y, z + 0.14], scale: [0.6, 0.04, 0.05], color: dark, rot: [0, 16 * sx, 0] });
-        mb.box({ pos: [0.56 * sx, y, z - 0.14], scale: [0.6, 0.04, 0.05], color: dark, rot: [0, -16 * sx, 0] });
-      }
-      // front wing outer elements and strakes
-      mb.box({ pos: [0.72 * sx, 0.3, 2.34], scale: [0.5, 0.03, 0.16], color: trim, rot: [-18, 0, 0] });
-      mb.box({ pos: [0.7 * sx, 0.2, 2.62], scale: [0.03, 0.1, 0.3], color: dark });
-      // nose pylons
-      mb.box({ pos: [0.12 * sx, 0.23, 2.4], scale: [0.04, 0.14, 0.18], color: dark });
+      mb.box({ pos: [0.78 * sx, 0.27, 0.1], scale: [0.04, 0.1, 2.0], color: carbon });
+      for (let i = 0; i < 3; i++) mb.box({ pos: [0.18 * sx * (i + 0.6), 0.25, -2.18], scale: [0.025, 0.2, 0.34], color: carbon });
+      for (let i = 0; i < 3; i++) mb.box({ pos: [(0.58 + i * 0.07) * sx, 0.27, 0.95 - i * 0.08], scale: [0.02, 0.18, 0.28], color: carbon, rot: [0, 18 * sx, 0] });
     }
-    mb.box({ pos: [0, 1.2, -0.2], scale: [0.2, 0.08, 0.12], color: '#facc15' });
-    // rain light and exhaust
-    mb.box({ pos: [0, 0.46, -2.29], scale: [0.14, 0.16, 0.05], color: '#ef4444' });
-    mb.prism({ pos: [0, 0.66, -1.72], radius: 0.1, height: 0.24, sides: 8, color: '#6b7280', rot: [90, 0, 0] });
-    // sidepods with livery stripe and radiator inlets
+    // monocoque
+    mb.box({ pos: [0, 0.46, 0.1], scale: [0.7, 0.42, 2.4], color: c.tub });
+    for (const sx of [1, -1]) tube([0.3 * sx, 0.6, 0.4], 0.09, 1.8, c.tub, 14);
+    // nose: a smooth taper, split down the middle so two sides can differ
+    for (let i = 0; i < 48; i++) {
+      const t = i / 47;
+      const y = 0.44 - t * 0.14;
+      const r = 0.25 - t * 0.17;
+      for (const sx of [1, -1]) mb.box({ pos: [(r / 2) * sx, y, 1.3 + t * 1.3], scale: [r, r * 1.3, 0.03], color: c.nose(sx) });
+      tube([0, y, 1.3 + t * 1.3], r * 0.82, 0.03, c.nose(1), 20);
+    }
+    mb.box({ pos: [0, 0.44, 1.7], scale: [0.07, 0.34, 0.9], color: c.spine, rot: [6, 0, 0] });
+    mb.box({ pos: [0, 0.29, 1.8], scale: [0.3, 0.05, 1.3], color: c.noseLow });
+    // sidepods: shoulder, undercut, stripe, inlet and cooling louvres
     for (const sx of [1, -1]) {
-      mb.box({ pos: [0.62 * sx, 0.42, -0.25], scale: [0.5, 0.36, 1.6], color: body });
-      mb.box({ pos: [0.62 * sx, 0.61, -0.25], scale: [0.4, 0.03, 1.4], color: trim });
-      mb.box({ pos: [0.62 * sx, 0.42, 0.62], scale: [0.42, 0.26, 0.16], color: dark });
+      mb.box({ pos: [0.62 * sx, 0.46, -0.2], scale: [0.48, 0.28, 1.55], color: c.pod(sx) });
+      tube([0.8 * sx, 0.46, -0.2], 0.14, 1.55, c.pod(sx), 20);
+      mb.box({ pos: [0.58 * sx, 0.29, -0.25], scale: [0.42, 0.14, 1.45], color: c.podLow(sx) });
+      mb.box({ pos: [0.62 * sx, 0.61, -0.25], scale: [0.4, 0.025, 1.4], color: c.podStripe });
+      mb.box({ pos: [0.64 * sx, 0.46, 0.6], scale: [0.4, 0.22, 0.06], color: dark });
+      for (let i = 0; i < 6; i++) mb.box({ pos: [0.6 * sx, 0.63, -0.45 - i * 0.1], scale: [0.26, 0.012, 0.035], color: dark });
+      // mirrors and bargeboards
+      mb.box({ pos: [0.52 * sx, 0.79, 0.82], scale: [0.22, 0.11, 0.08], color: c.pod(sx) });
+      mb.box({ pos: [0.41 * sx, 0.73, 0.82], scale: [0.16, 0.025, 0.03], color: carbon });
+      mb.box({ pos: [0.52 * sx, 0.36, 1.0], scale: [0.04, 0.3, 0.5], color: carbon, rot: [0, 14 * sx, 0] });
+      // wishbones and push rods out to each wheel
+      for (const [z, y] of [[1.45, 0.52], [1.45, 0.26], [-1.35, 0.54], [-1.35, 0.28]]) {
+        mb.box({ pos: [0.56 * sx, y, z + 0.14], scale: [0.6, 0.035, 0.05], color: carbon, rot: [0, 16 * sx, 0] });
+        mb.box({ pos: [0.56 * sx, y, z - 0.14], scale: [0.6, 0.035, 0.05], color: carbon, rot: [0, -16 * sx, 0] });
+      }
+      for (const z of [1.45, -1.35]) mb.box({ pos: [0.58 * sx, 0.42, z], scale: [0.6, 0.03, 0.03], color: carbon, rot: [0, 0, 24 * sx] });
     }
-    // engine cover, shark fin, airbox
-    mb.box({ pos: [0, 0.72, -0.95], scale: [0.46, 0.36, 1.45], color: body });
-    mb.box({ pos: [0, 0.95, -1.15], scale: [0.05, 0.35, 1.1], color: trim });
-    mb.box({ pos: [0, 0.99, -0.2], scale: [0.3, 0.3, 0.42], color: dark });
-    // cockpit, helmet, halo
-    mb.box({ pos: [0, 0.73, 0.5], scale: [0.46, 0.1, 0.65], color: dark });
-    mb.box({ pos: [0, 0.8, 0.35], scale: [0.24, 0.22, 0.24], color: '#f8fafc' });
-    mb.box({ pos: [0, 0.98, 0.55], scale: [0.5, 0.05, 0.62], color: trim });
-    mb.box({ pos: [0, 0.86, 0.86], scale: [0.05, 0.2, 0.05], color: trim });
-    // front wing: main plane, flap, endplates
-    mb.box({ pos: [0, 0.16, 2.55], scale: [1.95, 0.05, 0.45], color: trim });
-    mb.box({ pos: [0, 0.22, 2.42], scale: [1.85, 0.04, 0.22], color: body, rot: [-12, 0, 0] });
-    for (const sx of [1, -1]) mb.box({ pos: [0.98 * sx, 0.26, 2.55], scale: [0.05, 0.26, 0.5], color: body });
-    // rear wing: main plane, flap, endplates, pillar, diffuser
-    mb.box({ pos: [0, 1.02, -2.05], scale: [1.32, 0.07, 0.36], color: trim });
-    mb.box({ pos: [0, 1.12, -2.15], scale: [1.32, 0.05, 0.22], color: body, rot: [15, 0, 0] });
-    for (const sx of [1, -1]) mb.box({ pos: [0.67 * sx, 0.8, -2.05], scale: [0.05, 0.62, 0.52], color: body });
-    mb.box({ pos: [0, 0.72, -1.95], scale: [0.08, 0.55, 0.12], color: dark });
-    mb.box({ pos: [0, 0.4, -2.12], scale: [1.0, 0.18, 0.3], color: dark });
-    // wheels: 10-sided tyres on their side, grey rim centres
+    // engine cover, shark fin, airbox, T-camera, aerial
+    mb.box({ pos: [0, 0.68, -0.9], scale: [0.4, 0.3, 1.35], color: c.cover });
+    tube([0, 0.78, -0.55], 0.2, 0.7, c.cover, 20);
+    tube([0, 0.73, -1.15], 0.16, 0.6, c.cover, 20);
+    tube([0, 0.68, -1.6], 0.12, 0.4, c.cover, 20);
+    mb.box({ pos: [0, 0.97, -1.15], scale: [0.045, 0.36, 1.05], color: c.spine });
+    mb.box({ pos: [0, 0.99, -0.2], scale: [0.28, 0.28, 0.42], color: c.tub });
+    mb.box({ pos: [0, 0.99, 0.02], scale: [0.2, 0.18, 0.03], color: dark });
+    mb.box({ pos: [0, 1.2, -0.2], scale: [0.2, 0.08, 0.12], color: '#facc15' });
+    mb.box({ pos: [0, 0.75, 1.15], scale: [0.015, 0.18, 0.015], color: carbon });
+    // cockpit, driver, halo
+    mb.box({ pos: [0, 0.69, 0.5], scale: [0.44, 0.07, 0.68], color: dark });
+    mb.prism({ pos: [0, 0.81, 0.35], radius: 0.14, height: 0.18, sides: 20, color: '#f8fafc' });
+    mb.prism({ pos: [0, 0.915, 0.35], radius: 0.11, height: 0.05, sides: 20, color: trim });
+    mb.box({ pos: [0, 0.83, 0.47], scale: [0.2, 0.07, 0.05], color: '#0b1220' });
+    mb.box({ pos: [0, 0.74, 0.62], scale: [0.2, 0.05, 0.1], color: carbon });
+    for (let i = 0; i <= 18; i++) {
+      const a = (i / 18) * Math.PI;
+      mb.box({ pos: [Math.cos(a) * 0.27, 0.99, 0.35 + Math.sin(a) * 0.5], scale: [0.065, 0.055, 0.11], rot: [0, (-a * 180) / Math.PI, 0], color: carbon });
+    }
+    mb.box({ pos: [0, 0.86, 0.86], scale: [0.05, 0.22, 0.05], color: carbon });
+    // front wing: four elements, endplates, pylons
+    mb.box({ pos: [0, 0.15, 2.55], scale: [1.95, 0.035, 0.45], color: c.wing });
+    for (const sx of [1, -1]) {
+      mb.box({ pos: [0.62 * sx, 0.21, 2.46], scale: [0.72, 0.025, 0.2], color: c.flap, rot: [-12, 0, 0] });
+      mb.box({ pos: [0.66 * sx, 0.27, 2.37], scale: [0.64, 0.025, 0.15], color: c.wing, rot: [-18, 0, 0] });
+      mb.box({ pos: [0.7 * sx, 0.33, 2.3], scale: [0.54, 0.022, 0.12], color: c.flap, rot: [-24, 0, 0] });
+      mb.box({ pos: [0.98 * sx, 0.28, 2.52], scale: [0.045, 0.28, 0.52], color: c.plate(sx) });
+      mb.box({ pos: [0.12 * sx, 0.23, 2.4], scale: [0.04, 0.14, 0.18], color: carbon });
+    }
+    // rear wing: two elements, big endplates, beam wing, pillar, rain light
+    mb.box({ pos: [0, 1.02, -2.05], scale: [1.32, 0.06, 0.36], color: c.wing });
+    mb.box({ pos: [0, 1.14, -2.17], scale: [1.32, 0.04, 0.22], color: c.flap, rot: [18, 0, 0] });
+    mb.box({ pos: [0, 0.56, -2.12], scale: [1.1, 0.035, 0.18], color: carbon, rot: [10, 0, 0] });
+    for (const sx of [1, -1]) mb.box({ pos: [0.68 * sx, 0.82, -2.08], scale: [0.04, 0.68, 0.52], color: c.plate(sx) });
+    mb.box({ pos: [0, 0.72, -1.95], scale: [0.07, 0.55, 0.12], color: carbon });
+    mb.box({ pos: [0, 0.4, -2.12], scale: [1.0, 0.18, 0.3], color: carbon });
+    mb.box({ pos: [0, 0.46, -2.29], scale: [0.14, 0.16, 0.05], color: '#ef4444' });
+    tube([0, 0.62, -1.9], 0.09, 0.3, '#6b7280', 16);
+    // wheels: tyre, shoulder, compound ring, rim with spokes, nut, brake duct
     for (const [x, z, w] of [[0.98, 1.45, 0.36], [-0.98, 1.45, 0.36], [1.0, -1.35, 0.46], [-1.0, -1.35, 0.46]]) {
-      mb.prism({ pos: [x, 0.36, z], radius: 0.36, height: w, sides: 10, color: tyre, rot: [0, 0, 90] });
-      // sidewall ring, rim and wheel nut
-      const face = x + Math.sign(x) * (w / 2);
-      mb.prism({ pos: [face + Math.sign(x) * 0.004, 0.36, z], radius: 0.28, height: 0.01, sides: 10, color: '#facc15', rot: [0, 0, 90] });
-      mb.prism({ pos: [face + Math.sign(x) * 0.01, 0.36, z], radius: 0.235, height: 0.012, sides: 10, color: tyre, rot: [0, 0, 90] });
-      mb.prism({ pos: [face + Math.sign(x) * 0.018, 0.36, z], radius: 0.17, height: 0.014, sides: 10, color: '#9ca3af', rot: [0, 0, 90] });
-      mb.prism({ pos: [face + Math.sign(x) * 0.03, 0.36, z], radius: 0.05, height: 0.02, sides: 6, color: trim, rot: [0, 0, 90] });
+      const out = Math.sign(x);
+      const wheel = (dx, radius, height, color, sides = 28) => mb.prism({ pos: [x + dx, 0.36, z], radius, height, sides, color, rot: [0, 0, 90] });
+      wheel(0, 0.36, w - 0.05, tyre);
+      wheel(0, 0.345, w + 0.04, '#1d1f23');
+      const face = (out * w) / 2;
+      wheel(face + out * 0.022, 0.27, 0.01, '#facc15');
+      wheel(face + out * 0.027, 0.23, 0.012, tyre);
+      wheel(face + out * 0.033, 0.19, 0.014, '#3a3f47');
+      for (let k = 0; k < 5; k++) mb.box({ pos: [x + face + out * 0.045, 0.36, z], scale: [0.012, 0.34, 0.04], rot: [k * 36, 0, 0], color: '#aeb4bd' });
+      wheel(face + out * 0.055, 0.055, 0.03, trim, 8);
+      mb.box({ pos: [x - face - out * 0.03, 0.36, z + 0.05], scale: [0.08, 0.3, 0.26], color: carbon });
     }
     mesh = mb.build(app.graphicsDevice);
-    carMeshCache.set(key, mesh);
+    cache.set(key, mesh);
   }
   const car = meshToEntity(mesh, vertexColorMaterial(true), { name: 'car' });
+  const device = app.graphicsDevice;
+  // lettering: sponsor on the sidepods, rear wing and endplates, number on the nose
+  for (const sx of [1, -1]) {
+    const pod = livery.pattern === 'halves' && sx < 0 ? livery.second : livery.base;
+    decal(car, letteringMaterial(device, livery.title, inkOn(pod)), [0.945 * sx, 0.47, -0.2], [90, 90 * sx, 0], [1.3, 0.24]);
+    decal(car, letteringMaterial(device, livery.subtitle, inkOn(pod), { width: 256 }), [0.703 * sx, 0.86, -2.08], [90, 90 * sx, 0], [0.46, 0.2]);
+  }
+  decal(car, letteringMaterial(device, livery.title, inkOn(livery.pattern === 'halves' ? livery.base : livery.second)), [0, 1.056, -2.05], [0, 180, 0], [1.1, 0.26]);
+  decal(car, letteringMaterial(device, String(livery.number), inkOn(livery.base), { width: 128 }), [0, 0.67, 1.45], [8, 180, 0], [0.34, 0.34]);
   app.root.addChild(car);
   return car;
 }
-export const clearCarMeshCache = () => carMeshCache.clear();
+// kept for callers that tidy up: the cache now lives and dies with its device
+export const clearCarMeshCache = () => {};
 
 /**
  * Safety car: a white road car with an amber light bar, nose pointing +Z.
@@ -344,6 +408,7 @@ export const clearCarMeshCache = () => carMeshCache.clear();
  * safety car comes out.
  */
 export function buildSafetyCar(app) {
+  useMaterials(app.graphicsDevice);
   let safetyCarMesh = null;
   {
     const mb = new MeshBuilder();
@@ -354,7 +419,7 @@ export function buildSafetyCar(app) {
     mb.box({ pos: [0, 0.62, 2.21], scale: [1.6, 0.25, 0.05], color: '#f59e0b' });
     mb.box({ pos: [0, 0.3, 0], scale: [1.95, 0.15, 4.45], color: '#16a34a' });
     for (const [x, z] of [[0.95, 1.4], [-0.95, 1.4], [0.95, -1.4], [-0.95, -1.4]]) {
-      mb.prism({ pos: [x, 0.35, z], radius: 0.35, height: 0.3, sides: 10, color: '#16171a', rot: [0, 0, 90] });
+      mb.prism({ pos: [x, 0.35, z], radius: 0.35, height: 0.3, sides: 16, color: '#16171a', rot: [0, 0, 90] });
     }
     safetyCarMesh = mb.build(app.graphicsDevice);
   }
@@ -365,6 +430,7 @@ export function buildSafetyCar(app) {
 
 /** Rain: thin streaks in one mesh, moved down and wrapped every frame. */
 export function buildRain(app) {
+  useMaterials(app.graphicsDevice);
   const mb = new MeshBuilder();
   let a = 99;
   const rnd = () => {

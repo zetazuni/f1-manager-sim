@@ -6,7 +6,7 @@
 
 import { FREE_AGENTS, GRID_PROFILES, FIRST_YEAR } from '../data/season';
 import { makeRng } from './raceSim';
-import { teamsWithCars, carRating } from './factory';
+import { teamsWithCars, carRating, regulationReset } from './factory';
 
 export { FIRST_YEAR };
 export const VACANT = {
@@ -44,7 +44,7 @@ export function createCareer(teams) {
     const id = slug(d.name);
     drivers[id] = { ...d, id, morale: 65, contract: null };
   });
-  return { year: FIRST_YEAR, drivers, lineups, history: [] };
+  return { year: FIRST_YEAR, drivers, lineups, history: [], records: {} };
 }
 
 /** Grid teams with this season's lineups and developed cars. */
@@ -255,19 +255,8 @@ export function finishOffSeason(season, teams, playerTeamId, constructorsTable) 
     return pick.id;
   });
 
-  // regulation reset: the field closes up by 40 %
-  const keys = Object.keys(next.teams[teams[0].id].car);
-  keys.forEach((k) => {
-    const avg = teams.reduce((s, t) => s + next.teams[t.id].car[k], 0) / teams.length;
-    teams.forEach((t) => {
-      const c = next.teams[t.id].car;
-      c[k] = +(avg + (c[k] - avg) * 0.6).toFixed(4);
-    });
-  });
-  teams.forEach((t) => {
-    next.teams[t.id].projects = [];
-    next.teams[t.id].budget = +(next.teams[t.id].budget + (t.budget / M) * 0.15).toFixed(2); // new season funding
-  });
+  // regulation reset: the field closes up by 40 %, parts start again
+  regulationReset(next.teams, teams);
 
   // fresh season
   const ids = teams.flatMap((t) => t.drivers.map((_, i) => `${t.id}-${i}`));

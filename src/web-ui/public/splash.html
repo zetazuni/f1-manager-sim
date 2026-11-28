@@ -32,11 +32,7 @@
     animation: arrive 600ms cubic-bezier(.22,1,.36,1) both;
   }
   .row { display: flex; align-items: center; gap: 18px; }
-  .logo {
-    width: 64px; height: 64px; border-radius: 18px; background: #e10600;
-    display: grid; place-items: center; font-weight: 800; font-size: 38px; color: #fff6ec;
-    animation: lamp 2.6s ease-in-out infinite;
-  }
+  .logo { width: 80px; height: 80px; animation: lamp 2.6s ease-in-out infinite; }
   h1 {
     margin: 0; font-weight: 800; font-stretch: 82%; font-size: 52px; letter-spacing: -0.02em; line-height: 1;
     background: linear-gradient(180deg, #efe7f7 40%, #f6b25e); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -49,8 +45,8 @@
   .bar i { display: block; height: 100%; width: 30%; border-radius: 3px; background: linear-gradient(90deg, #f6b25e, #f27a8a); animation: slide 1.6s cubic-bezier(.45,0,.2,1) infinite; }
   @keyframes arrive { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes lamp {
-    0%, 100% { box-shadow: 0 0 26px rgb(225 6 0 / .55), 0 0 70px rgb(246 178 94 / .2); }
-    50% { box-shadow: 0 0 40px rgb(225 6 0 / .75), 0 0 100px rgb(246 178 94 / .35); }
+    0%, 100% { filter: drop-shadow(0 0 12px rgb(225 6 0 / .55)); }
+    50% { filter: drop-shadow(0 0 24px rgb(246 130 60 / .8)); }
   }
   @keyframes slide { from { transform: translateX(-110%); } to { transform: translateX(380%); } }
   @media (prefers-reduced-motion: reduce) {
@@ -62,7 +58,7 @@
 <body>
   <div class="card" role="status" aria-label="Zetrace is loading">
     <div class="row">
-      <div class="logo">Z</div>
+      <img class="logo" src="./logo.svg" alt="">
       <div>
         <h1>Zetrace</h1>
         <p class="sub">an F1 manager for quiet evenings</p>

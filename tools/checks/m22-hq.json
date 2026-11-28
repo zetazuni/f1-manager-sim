@@ -1,0 +1,337 @@
+[
+ {
+  "waitFor": "[data-tab=hq]",
+  "timeout": 60000
+ },
+ {
+  "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+ },
+ {
+  "waitFor": "[data-testid=hq-view] canvas",
+  "timeout": 60000
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "eval": "'tour ' + JSON.stringify(window.__zetraceHQ())"
+ },
+ {
+  "eval": "document.querySelector('[data-room=campus]').click(), 'campus'"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "hq-campus-a.png"
+ },
+ {
+  "eval": "window.__c = window.__zetraceHQ().camera.join(); 'sample'"
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "shot": "hq-campus-b.png"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "hq-campus-c.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().camera.join() === window.__c) throw new Error('campus does not rotate'); 'rotates ' + JSON.stringify(window.__zetraceHQ())"
+ },
+ {
+  "shot": "hq-campus.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=wind]').click(), 'wind'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=wind]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'wind') throw new Error('not in wind'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-wind.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'wind') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only wind'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=power]').click(), 'power'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=power]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'power') throw new Error('not in power'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-power.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'power') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only power'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=factory]').click(), 'factory'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=factory]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'factory') throw new Error('not in factory'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-factory.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'factory') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only factory'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=rig]').click(), 'rig'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=rig]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'rig') throw new Error('not in rig'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-rig.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'rig') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only rig'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=hub]').click(), 'hub'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=hub]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'hub') throw new Error('not in hub'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-hub.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'hub') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only hub'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=board]').click(), 'board'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=board]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'board') throw new Error('not in board'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-board.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'board') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only board'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=lobby]').click(), 'lobby'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=lobby]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-lobby.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'lobby') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only lobby'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=bay]').click(), 'bay'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=bay]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-bay.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'bay') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only bay'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=sim]').click(), 'sim'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=sim]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-sim.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'sim') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only sim'"
+ },
+ {
+  "eval": "document.querySelector('[data-visit=frontWing]').click(), 'aero row'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "eval": "if (window.__zetraceHQ().asked !== 'wind') throw new Error('aero row did not go to the tunnel'); 'aero -> wind'"
+ },
+ {
+  "eval": "document.querySelector('[data-facility=power]').click(), 'buy PU'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "eval": "if (window.__zetraceHQ().asked !== 'power') throw new Error('upgrade did not go to powertrain'); 'upgrade -> power'"
+ }
+]

@@ -1,0 +1,16 @@
+[
+ {"waitFor": "[data-testid=qualify]"},
+ {"eval": "document.querySelector('[data-testid=qualify]').click(), 'q'"},
+ {"waitFor": "[data-testid=to-race]"},
+ {"eval": "document.querySelector('[data-testid=to-race]').click(), 'r'"},
+ {"waitFor": "[data-testid=run]"},
+ {"eval": "document.querySelector('[data-testid=run]').click(), 'go'"},
+ {"waitFor": "[data-testid=team-orders]", "timeout": 60000},
+ {"eval": "document.querySelector('[data-tab=standings]').click(), 'away'"},
+ {"wait": 1500},
+ {"shot": "tabs-away.png"},
+ {"eval": "document.querySelector('[data-tab=weekend]').click(), 'back'"},
+ {"wait": 1500},
+ {"shot": "tabs-back.png"},
+ {"eval": "const h = window.__zetrace.app.root.findComponents('camera')[0].orthoHeight; if (!Number.isFinite(h) || h > 2000) throw new Error('race camera broke: ' + h); 'camera zoom ' + h.toFixed(1)"}
+]

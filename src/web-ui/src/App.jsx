@@ -10,11 +10,13 @@ import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, CALENDAR, PLAYER_TEAM_ID as DEFAULT_TEAM_ID } from './data/season';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
-import { startProject } from './game/factory';
+import { startResearch, orderBuild, orderSpares, upgradeFacility, seatStats, FACILITIES } from './game/factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './game/career';
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
 import { setMusicLevel } from './services/MusicPlayer';
+import Logo from './components/Logo';
+import Briefing from './components/Briefing';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -29,11 +31,22 @@ const testRound = () => {
   return r >= 1 && r <= CALENDAR.length ? r : null;
 };
 
+// Test hook: ?facilities=3 starts with every building at that level
+const testFacilities = (season) => {
+  const level = Number(new URLSearchParams(window.location.search).get('facilities'));
+  if (level >= 2 && level <= 3) {
+    const ts = season.teams[season.playerTeamId];
+    FACILITIES.forEach((f) => { ts.facilities[f.id] = level; });
+    ts.car = seatStats(ts);
+  }
+  return season;
+};
+
 const newSeason = (teamId = DEFAULT_TEAM_ID) => {
   const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: teamId });
   const r = testRound();
   if (r) season.round = r - 1;
-  return season;
+  return testFacilities(season);
 };
 
 /** Saved career when there is one (and no test hook), otherwise a new season. */
@@ -111,13 +124,14 @@ function App() {
     setSeason((s) => ({ ...s, phase: 'quali', quali }));
   };
   const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
-  const onFinished = useCallback((snap, fastestCarId) => {
-    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s), snap.swapLog || []));
+  const onFinished = useCallback((snap, fastestCarId, fastestTime) => {
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s), snap.swapLog || [], fastestTime));
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
-  const startUpgrade = (area, tier) => {
-    const res = startProject(season, PLAYER_TEAM_ID, area, tier);
+  const factoryAction = (kind, ...args) => {
+    const actions = { research: startResearch, build: orderBuild, spares: orderSpares, facility: upgradeFacility };
+    const res = actions[kind](season, PLAYER_TEAM_ID, ...args);
     if (res.ok) setSeason(res.season);
     return res;
   };
@@ -172,7 +186,7 @@ function App() {
       <header className="sticky top-0 z-header border-b border-line bg-ink/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-6 px-4">
           <div className="flex items-center gap-3 py-3">
-            <span className="lamp-glow grid h-9 w-9 place-items-center rounded-xl bg-f1-red font-display text-xl font-bold">Z</span>
+            <Logo className="h-11 w-11 drop-shadow-[0_0_14px_rgba(225,6,0,0.55)]" />
             <div className="leading-none">
               <p className="display text-2xl leading-none text-cream">Zetrace</p>
               <p className="text-[11px] text-muted/80">F1 manager</p>
@@ -228,10 +242,10 @@ function App() {
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
         {tab === 'hq' && (
-          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
+          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onAction={factoryAction} quality={settings.quality} />
         )}
         {tab === 'calendar' && (
-          <CalendarView calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
+          <CalendarView teams={seasonTeams} career={season.career} quality={settings.quality} calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
         )}
         {tab === 'weekend' && (
           <>
@@ -244,6 +258,9 @@ function App() {
                 track={calTrack}
                 round={season.round + 1}
                 total={CALENDAR.length}
+                teams={seasonTeams}
+                quality={settings.quality}
+                briefing={<Briefing season={season} track={calTrack} table={table} />}
                 players={playerCars}
                 modes={modes}
                 onMode={(carId, m) => setModes((x) => ({ ...x, [carId]: m }))}

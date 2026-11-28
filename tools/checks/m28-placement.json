@@ -1,0 +1,8 @@
+[
+ {
+  "waitFor": ".panel"
+ },
+ {
+  "eval": "(async () => {\n  const pc = await import('/node_modules/.vite/deps/playcanvas.js').catch(() => import('/@id/playcanvas'));\n  const { buildCircuit, clearMaterialCache } = await import('/src/game/scene.js');\n  const { makeTrackPath } = await import('/src/game/trackPath.js');\n  const { CALENDAR, GRID_TEAMS } = await import('/src/data/season.js');\n  const out = [];\n  for (const t of CALENDAR) {\n    const canvas = document.createElement('canvas');\n    const app = new pc.Application(canvas, {});\n    const path = makeTrackPath(t.points);\n    const root = buildCircuit(app, path, { teams: GRID_TEAMS, env: t.env, seed: t.id.length * 7 + 3, pitSide: t.pitSide, landmarks: t.landmarks });\n    const a = root.placement.audit();\n    out.push({ id: t.id, ...a, marks: root.landmarks.length, missing: root.landmarks.filter((l) => !l.placed).map((l) => l.type), height: Math.max(...path.points.map((p) => p.y)), verts: root.findByName('static-scenery').render.meshInstances[0].mesh.vertexBuffer.numVertices });\n    const device = app.graphicsDevice;\n    app.destroy();\n    clearMaterialCache(device);\n  }\n  const bad = out.filter((o) => o.overlaps || o.onRoad || !o.marks || o.missing.length);\n  return JSON.stringify({ ok: bad.length === 0, circuits: out.length, bad, summary: out.map((o) => `${o.id}: ${o.placed} placed, ${o.refused} refused, ${o.marks - o.missing.length}/${o.marks} landmarks${o.height > 1 ? ', bridge' : ''}, ${Math.round(o.verts / 1000)}k verts`) });\n})().then((r) => { const j = JSON.parse(r); if (!j.ok) throw new Error('overlapping or missing scenery: ' + JSON.stringify(j.bad)); return r; })"
+ }
+]
