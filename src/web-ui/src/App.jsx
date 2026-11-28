@@ -230,7 +230,7 @@ function App() {
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
         {tab === 'hq' && (
-          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
+          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} quality={settings.quality} />
         )}
         {tab === 'calendar' && (
           <CalendarView teams={seasonTeams} career={season.career} quality={settings.quality} calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />

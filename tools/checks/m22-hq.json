@@ -1,0 +1,208 @@
+[
+ {
+  "waitFor": "[data-tab=hq]",
+  "timeout": 60000
+ },
+ {
+  "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+ },
+ {
+  "waitFor": "[data-testid=hq-view] canvas",
+  "timeout": 60000
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "eval": "'tour ' + JSON.stringify(window.__zetraceHQ())"
+ },
+ {
+  "shot": "hq-campus.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=wind]').click(), 'wind'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=wind]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'wind') throw new Error('not in wind'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-wind.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=power]').click(), 'power'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=power]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'power') throw new Error('not in power'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-power.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=factory]').click(), 'factory'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=factory]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'factory') throw new Error('not in factory'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-factory.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=rig]').click(), 'rig'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=rig]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'rig') throw new Error('not in rig'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-rig.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=hub]').click(), 'hub'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=hub]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'hub') throw new Error('not in hub'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-hub.png"
+ },
+ {
+  "eval": "document.querySelector('[data-room=board]').click(), 'board'"
+ },
+ {
+  "wait": 900
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=board]",
+  "timeout": 60000
+ },
+ {
+  "eval": "if (window.__zetraceHQ().room !== 'board') throw new Error('not in board'); document.querySelector('[data-testid=hq-room]').textContent"
+ },
+ {
+  "shot": "hq-board.png"
+ },
+ {
+  "eval": "document.querySelector('[data-visit=aeroHighSpeed]').click(), 'aero row'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "eval": "if (window.__zetraceHQ().asked !== 'wind') throw new Error('aero row did not go to the tunnel'); 'aero -> wind'"
+ },
+ {
+  "eval": "document.querySelector('[data-upgrade=\"powerUnit-medium\"]').click(), 'buy PU'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "eval": "if (window.__zetraceHQ().asked !== 'power') throw new Error('upgrade did not go to powertrain'); 'upgrade -> power'"
+ }
+]

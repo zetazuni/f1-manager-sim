@@ -190,6 +190,13 @@
   }
 }
 
+/* short dip to dark when the HQ camera cuts to another room */
+.hq-cut { opacity: 0; animation: hq-cut 450ms ease-out; }
+@keyframes hq-cut {
+  from { opacity: 0.95; }
+  to { opacity: 0; }
+}
+
 @keyframes rise {
   /* no blur here: animating filter over backdrop-blur panels is costly on weaker GPUs */
   from { opacity: 0; transform: translateY(14px) scale(0.99); }

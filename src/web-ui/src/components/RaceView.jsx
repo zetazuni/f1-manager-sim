@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pc from 'playcanvas';
-import { addReflections } from '../game/stage';
+import { addReflections, softwareRendering } from '../game/stage';
 import { makeTrackPath } from '../game/trackPath';
 import { buildCircuit, buildCar, buildSafetyCar, buildRain, clearMaterialCache, clearCarMeshCache } from '../game/scene';
 import { ENVIRONMENTS } from '../game/environments';
@@ -39,11 +39,13 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
       touch: new pc.TouchDevice(canvas),
       graphicsDeviceOptions: { antialias: true },
     });
+    // without a graphics card: no shadows or reflections, whatever the setting says
+    const detail = softwareRendering(app) ? 'low' : quality;
     // CSS controls the canvas size; PlayCanvas matches its draw buffer to it.
     app.setCanvasFillMode(pc.FILLMODE_NONE);
     app.setCanvasResolution(pc.RESOLUTION_AUTO);
     // Low quality renders at 1x pixel ratio; high allows up to 2x on sharp screens
-    app.graphicsDevice.maxPixelRatio = quality === 'high' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    app.graphicsDevice.maxPixelRatio = detail === 'high' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
     const theme = ENVIRONMENTS[track?.env] || ENVIRONMENTS.forest;
     app.scene.ambientLight = col(theme.ambient, theme.ambientLevel * 2.2);
     // distance fog in the sky colour gives depth to the far edge of the map
@@ -88,9 +90,9 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
       type: 'directional',
       color: col(theme.sun.color),
       intensity: theme.sun.intensity,
-      castShadows: quality !== 'low',
+      castShadows: detail !== 'low',
       shadowDistance: 420,
-      shadowResolution: quality === 'high' ? 2048 : 1024,
+      shadowResolution: detail === 'high' ? 2048 : 1024,
       shadowBias: 0.2,
       normalOffsetBias: 0.05,
     });
@@ -104,9 +106,9 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     if (app.scene.fog && typeof app.scene.fog === 'object') { app.scene.fog.start = 230 * reach; app.scene.fog.end = 420 * reach; }
     const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3, pitSide: track?.pitSide });
 
-    addReflections(app, circuit, theme.sky, quality);
+    addReflections(app, circuit, theme.sky, detail);
     sun.light.shadowDistance = 420 * reach;
-    if (quality === 'high') sun.light.shadowType = pc.SHADOW_PCF5_32F;
+    if (detail === 'high') sun.light.shadowType = pc.SHADOW_PCF5_32F;
 
     // Weather: rain streaks, dimmer greyer light, glossy wet asphalt
     const rain = buildRain(app);
@@ -155,7 +157,8 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
       .add(right.clone().mulScalar((minX + maxX) / 2))
       .add(up.clone().mulScalar((minY + maxY) / 2));
     const fitHeight = () => {
-      const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight);
+      // a hidden view has no size: fall back to a normal shape instead of dividing by zero
+      const aspect = canvas.clientWidth && canvas.clientHeight ? canvas.clientWidth / canvas.clientHeight : 1.6;
       return Math.max((maxY - minY) / 2, (maxX - minX) / 2 / aspect) * 1.08;
     };
 
@@ -225,7 +228,7 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
       if (mode === 'overview') {
         // Smooth zoom; when zoomed in, the camera slides toward the focused car
         const wanted = fitHeight() * zoom;
-        cam.orthoHeight += (wanted - cam.orthoHeight) * Math.min(1, dt * 8);
+        cam.orthoHeight = Number.isFinite(cam.orthoHeight) ? cam.orthoHeight + (wanted - cam.orthoHeight) * Math.min(1, dt * 8) : wanted;
         const follow = Math.max(0, Math.min(1, (1 - cam.orthoHeight / fitHeight()) / 0.6));
         look.copy(fitCenter);
         if (focus) look.lerp(fitCenter, focus.getPosition(), follow);

@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import HQView from './HQView';
+import { roomOfArea } from '../game/hq';
 import { AREAS, TIERS, CAPACITY, CEILING, projectCost, carRating, sponsorGoalFor } from '../game/factory';
 
 // Bullet chart scale: car stats live between about 0.80 and 1.00
@@ -18,7 +20,7 @@ const Tile = ({ label, children, sub }) => (
 );
 
 /** Our car per area (bar) against the grid best (white tick) and grid average (grey tick). */
-const PerformanceChart = ({ rows }) => {
+const PerformanceChart = ({ rows, us }) => {
   const [hover, setHover] = useState(null);
   const [asTable, setAsTable] = useState(false);
   return (
@@ -26,7 +28,7 @@ const PerformanceChart = ({ rows }) => {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="panel-title">Our car by area</h3>
         <div className="flex items-center gap-4 text-xs text-muted">
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES }} />Zetrace</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES }} />{us}</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-slate-200" />Grid best</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-muted" />Grid average</span>
           <button type="button" className="btn btn-ghost px-2 py-1 text-[11px]" onClick={() => setAsTable((x) => !x)}>
@@ -89,8 +91,16 @@ const PerformanceChart = ({ rows }) => {
   );
 };
 
-const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
+const FactoryView = ({ season, teams, playerTeamId, onStart, quality }) => {
   const me = season.teams[playerTeamId];
+  const team = teams.find((t) => t.id === playerTeamId);
+  const [room, setRoom] = useState(null); // null = automatic tour
+  const viewRef = useRef(null);
+  // jump to the room that works on this part of the car
+  const visit = (area) => {
+    setRoom(roomOfArea(area));
+    viewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
   const [message, setMessage] = useState(null);
 
   const rows = useMemo(() => AREAS.map((a) => {
@@ -114,6 +124,7 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
 
   const start = (area, tier) => {
     const res = onStart(area, tier);
+    visit(area);
     setMessage(res.ok ? { type: 'ok', text: `${TIERS[tier].label} ${AREAS.find((a) => a.key === area).label} project started.` } : { type: 'err', text: res.reason });
   };
 
@@ -128,6 +139,10 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
         <Tile label="Next sponsor objective" sub={`Worth $${goal.reward}M`}><span className="text-xl">{goal.label}</span></Tile>
       </div>
 
+      <div ref={viewRef}>
+        <HQView team={team} state={me} room={room} onRoom={setRoom} quality={quality} />
+      </div>
+
       {season.news?.length > 0 && (
         <div className="panel space-y-1 p-4">
           {season.news.map((n, i) => (
@@ -137,7 +152,7 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
       )}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <PerformanceChart rows={rows} />
+        <PerformanceChart rows={rows} us={team?.short || 'Us'} />
 
         <section className="panel p-5">
           <h3 className="panel-title mb-3">In the factory</h3>
@@ -195,8 +210,10 @@ const FactoryView = ({ season, teams, playerTeamId, onStart }) => {
                 return (
                   <tr key={a.key} className="border-t border-line">
                     <td className="py-2 pr-3">
-                      <p className="font-bold">{a.label}</p>
-                      <p className="text-[11px] text-muted">{a.hint} | now {(value * 100).toFixed(1)}</p>
+                      <button type="button" data-visit={a.key} className="cursor-pointer text-left hover:text-lantern" title="Show this department" onClick={() => visit(a.key)}>
+                        <p className="font-bold">{a.label}</p>
+                        <p className="text-[11px] text-muted">{a.hint} | now {(value * 100).toFixed(1)}</p>
+                      </button>
                     </td>
                     {Object.values(TIERS).map((t) => {
                       const cost = projectCost(t.key, value);

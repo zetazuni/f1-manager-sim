@@ -28,6 +28,8 @@ const CHECKS = [
   ['m9-cameras', '?notitle=1'],
   ['m10-title', ''],
   ['m20-calendar', '?notitle=1'],
+  ['m22-hq', '?notitle=1'],
+  ['m22-tabs', '?notitle=1'],
 ];
 
 const results = [];

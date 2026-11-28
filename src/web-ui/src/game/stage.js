@@ -61,13 +61,28 @@ export function addReflections(app, circuit, sky, quality) {
   }
 }
 
+/** True when WebGL runs on the processor (no usable graphics card). */
+export function softwareRendering(app) {
+  const gl = app.graphicsDevice.gl;
+  const info = gl?.getExtension('WEBGL_debug_renderer_info');
+  return /swiftshader|llvmpipe|software|basic render/i.test(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '');
+}
+
 export function createStage(canvas, { quality = 'high', sky = '#1a1430', ambient = '#8f86ab', ambientLevel = 0.9, sun = { color: '#ffe6c4', intensity: 1.3, pitch: 48, yaw: 30 }, shadowDistance = 200, farClip = 800 } = {}) {
   const app = new pc.Application(canvas, { graphicsDeviceOptions: { antialias: true } });
   app.setCanvasFillMode(pc.FILLMODE_NONE);
   app.setCanvasResolution(pc.RESOLUTION_AUTO);
+  // without a graphics card, a showcase view draws a few frames a second, no shadows
+  const slow = softwareRendering(app);
+  if (slow) quality = 'low';
   app.graphicsDevice.maxPixelRatio = quality === 'high' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
   app.scene.ambientLight = colour(ambient, ambientLevel);
   app.start();
+  let timer = null;
+  if (slow) {
+    app.autoRender = false;
+    timer = setInterval(() => { app.renderNextFrame = true; }, 250);
+  }
 
   const resize = () => {
     if (canvas.clientWidth && canvas.clientHeight) app.graphicsDevice.resizeCanvas(canvas.clientWidth, canvas.clientHeight);
@@ -99,6 +114,7 @@ export function createStage(canvas, { quality = 'high', sky = '#1a1430', ambient
       if (fov) camera.camera.fov = fov;
     },
     destroy() {
+      clearInterval(timer);
       observer.disconnect();
       const device = app.graphicsDevice;
       app.destroy();
