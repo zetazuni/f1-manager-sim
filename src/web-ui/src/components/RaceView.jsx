@@ -97,7 +97,11 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     app.root.addChild(sun);
 
     const path = makeTrackPath(track?.points);
-    const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3 });
+    // how much bigger than the first circuits this one is
+    const span = (k) => Math.max(...path.points.map((p) => p[k])) - Math.min(...path.points.map((p) => p[k]));
+    const reach = Math.max(1, Math.max(span('x'), span('z')) / 130);
+    if (app.scene.fog && typeof app.scene.fog === 'object') { app.scene.fog.start = 230 * reach; app.scene.fog.end = 420 * reach; }
+    const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3, pitSide: track?.pitSide });
 
     // Weather: rain streaks, dimmer greyer light, glossy wet asphalt
     const rain = buildRain(app);
@@ -220,7 +224,7 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
         const follow = Math.max(0, Math.min(1, (1 - cam.orthoHeight / fitHeight()) / 0.6));
         look.copy(fitCenter);
         if (focus) look.lerp(fitCenter, focus.getPosition(), follow);
-        camera.setPosition(look.x + 110, look.y + 110, look.z + 110);
+        camera.setPosition(look.x + 110 * reach, look.y + 110 * reach, look.z + 110 * reach);
         camera.lookAt(look);
         return;
       }

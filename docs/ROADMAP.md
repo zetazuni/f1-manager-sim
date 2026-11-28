@@ -129,6 +129,31 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - `tools/install-desktop.ps1` builds the exe, copies it to `Zetrace App` and adds desktop and Start menu shortcuts.
 - Desktop saves are separate from browser saves (different web origin).
 
+## M14 Fullscreen (2026-11-28)
+
+- The desktop app opens fullscreen. F11 toggles, Esc leaves, Settings has fullscreen and quit buttons.
+- Table rows keep their tint clear of the first and last values.
+
+## M15 Season packs and bigger grids (2026-11-28)
+
+- `data/season.js` loads the season and lets a git-ignored `data/local/season.js` replace it.
+- Team picker for new careers; any number of teams; pit lane on either side per circuit.
+- Scenery, camera and fog scale with the circuit size. Flat maps now match the 3D view (they were mirrored).
+
+## M16 Driver faces (2026-11-28)
+
+- A season pack can give each driver a photo (`FACES`); they show beside names. The repository ships none.
+
+## M17 Lofi music (2026-11-28)
+
+- Three original lofi loops made in code (`services/MusicPlayer.js`), 32 bars each, starting on the first click.
+- Settings: Normal, Low or Off, separate from sound effects.
+
+## M18 3D detail (2026-11-28)
+
+- Cars: bargeboards, mirrors, wishbones, wing elements, rain light, sidewall rings and rims.
+- Trackside (`game/details.js`): rubbered line, tyre walls, gravel traps, braking boards, catch fence, marshal posts, pit crews, team trucks, a big screen and lettered sponsor boards.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

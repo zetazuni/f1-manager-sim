@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 dist/
 node_modules/
+
+# private season pack (real names and photos stay off the public repo)
+src/data/local/
+public/local/

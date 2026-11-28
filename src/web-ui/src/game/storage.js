@@ -3,12 +3,14 @@
 
 import { createTeamStates } from './factory';
 import { createCareer } from './career';
+import { PACK_ID } from '../data/season';
 
-const KEY = 'zetrace.career.v1';
+// each season pack keeps its own career
+const KEY = `zetrace.career.v1${PACK_ID ? `.${PACK_ID}` : ''}`;
 const SETTINGS_KEY = 'zetrace.settings.v1';
 export const SAVE_VERSION = 1;
 
-export const DEFAULT_SETTINGS = { quality: 'high', sound: true, speed: 1 };
+export const DEFAULT_SETTINGS = { quality: 'high', sound: true, music: 'normal', speed: 1 };
 
 const store = () => {
   try {

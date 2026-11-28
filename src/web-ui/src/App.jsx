@@ -8,13 +8,13 @@ import OffSeasonScreen from './components/OffSeasonScreen';
 import TitleScreen from './components/TitleScreen';
 import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components/WeekendScreen';
 import SimulationEngine from './services/SimulationEngine';
-import { GRID_TEAMS, PLAYER_TEAM_ID } from './data/grid';
-import { CALENDAR } from './data/calendar';
+import { GRID_TEAMS, CALENDAR, PLAYER_TEAM_ID as DEFAULT_TEAM_ID } from './data/season';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
 import { startProject } from './game/factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './game/career';
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
+import { setMusicLevel } from './services/MusicPlayer';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -29,8 +29,8 @@ const testRound = () => {
   return r >= 1 && r <= CALENDAR.length ? r : null;
 };
 
-const newSeason = () => {
-  const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: PLAYER_TEAM_ID });
+const newSeason = (teamId = DEFAULT_TEAM_ID) => {
+  const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: teamId });
   const r = testRound();
   if (r) season.round = r - 1;
   return season;
@@ -38,7 +38,7 @@ const newSeason = () => {
 
 /** Saved career when there is one (and no test hook), otherwise a new season. */
 const initialCareer = () => {
-  const saved = testRound() ? null : loadCareer({ teams: GRID_TEAMS, playerTeamId: PLAYER_TEAM_ID });
+  const saved = testRound() ? null : loadCareer({ teams: GRID_TEAMS, playerTeamId: DEFAULT_TEAM_ID });
   return saved
     ? { season: saved.season, modes: saved.modes || null, practice: saved.practice || null, hasSave: true }
     : { season: newSeason(), modes: null, practice: null, hasSave: false };
@@ -51,10 +51,11 @@ function App() {
   const [settings, setSettings] = useState(loadSettings);
   const [speed, setSpeed] = useState(settings.speed);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const PLAYER_TEAM_ID = season.playerTeamId || DEFAULT_TEAM_ID;
   const seatIds = [0, 1].map((i) => `${PLAYER_TEAM_ID}-${i}`);
-  const defaultModes = () => Object.fromEntries(seatIds.map((id) => [id, QUALI_MODE.Safe]));
+  const defaultModes = (ids = seatIds) => Object.fromEntries(ids.map((id) => [id, QUALI_MODE.Safe]));
   const [modes, setModes] = useState(() => boot.modes || defaultModes());
-  const defaultPractice = () => Object.fromEntries(seatIds.map((id) => [id, 'setup']));
+  const defaultPractice = (ids = seatIds) => Object.fromEntries(ids.map((id) => [id, 'setup']));
   const [practice, setPractice] = useState(() => boot.practice || defaultPractice());
   // Title screen on every load (skipped by the ?round=N and ?notitle=1 test hooks)
   const [onTitle, setOnTitle] = useState(() => {
@@ -70,6 +71,7 @@ function App() {
   useEffect(() => {
     saveSettings(settings);
     setSoundEnabled(settings.sound);
+    setMusicLevel(settings.music);
   }, [settings]);
   // patch = only the changed fields; merged into the latest settings so quick
   // successive changes never overwrite each other
@@ -141,11 +143,12 @@ function App() {
     setSeason((s) => finishOffSeason(s, GRID_TEAMS, PLAYER_TEAM_ID, standings(s, teamsForSeason(GRID_TEAMS, s)).teams));
     setTab('weekend');
   };
-  const resetCareer = () => {
+  const resetCareer = (teamId = PLAYER_TEAM_ID) => {
+    const ids = [0, 1].map((i) => `${teamId}-${i}`);
     clearCareer();
-    setSeason(newSeason());
-    setModes(defaultModes());
-    setPractice(defaultPractice());
+    setSeason(newSeason(teamId));
+    setModes(defaultModes(ids));
+    setPractice(defaultPractice(ids));
     setTab('weekend');
     setSettingsOpen(false);
   };
@@ -159,7 +162,7 @@ function App() {
       <TitleScreen
         saveInfo={info}
         onContinue={() => setOnTitle(false)}
-        onNew={() => { resetCareer(); setOnTitle(false); }}
+        onNew={(teamId) => { resetCareer(teamId); setOnTitle(false); }}
       />
     );
   }
@@ -290,7 +293,7 @@ function App() {
         settings={settings}
         onChange={changeSettings}
         onClose={() => setSettingsOpen(false)}
-        onResetCareer={resetCareer}
+        onResetCareer={() => resetCareer()}
       />
     </div>
   );

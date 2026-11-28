@@ -3,6 +3,7 @@
 // plain JSON so a career can be saved later.
 
 import { POINTS } from '../data/grid';
+import { FASTEST_LAP_BONUS } from '../data/season';
 import { makeRng } from './raceSim';
 import { createTeamStates, settleRound } from './factory';
 import { createCareer, updateMorale } from './career';
@@ -13,7 +14,7 @@ const PUSH_RISK = 0.15; // chance the push lap is deleted (track limits)
 
 /** Turn a calendar entry into the track object the simulation expects. */
 export const raceTrackOf = (t) => ({
-  id: t.id, name: t.name, env: t.env, points: t.points, totalLaps: t.laps, baseLapTime: t.baseLapTime,
+  id: t.id, name: t.name, env: t.env, points: t.points, pitSide: t.pitSide, totalLaps: t.laps, baseLapTime: t.baseLapTime,
   tireWearFactor: t.tireWearFactor, fuelConsumption: t.fuelConsumption, pitLoss: t.pitLoss, rainChance: t.rainChance ?? 0,
   sectors: { sector1: 0.33, sector2: 0.34, sector3: 0.33 },
 });
@@ -79,7 +80,7 @@ export function recordRace(season, trackId, rows, fastestCarId, teams = null, sw
   const out = rows.map((r) => {
     let points = r.dnf ? 0 : POINTS[r.pos - 1] || 0;
     const fastest = r.id === fastestCarId;
-    if (fastest && !r.dnf && r.pos <= 10) points += 1;
+    if (FASTEST_LAP_BONUS && fastest && !r.dnf && r.pos <= 10) points += 1;
     return { carId: r.id, pos: r.pos, points, dnf: r.dnf || null, fastest };
   });
   out.forEach((r) => {
@@ -113,14 +114,14 @@ export function advance(season) {
 /** Championship tables, best first. Ties broken by wins, then seconds, ... */
 export function standings(season, teams) {
   const finishes = (carIds) => {
-    const counts = Array(20).fill(0);
+    const counts = Array(30).fill(0);
     season.results.forEach((res) => res.rows.forEach((r) => {
-      if (carIds.includes(r.carId) && !r.dnf && r.pos <= 20) counts[r.pos - 1] += 1;
+      if (carIds.includes(r.carId) && !r.dnf && r.pos <= 30) counts[r.pos - 1] += 1;
     }));
     return counts;
   };
   const tiebreak = (a, b) => {
-    for (let i = 0; i < 20; i++) if (a.finishes[i] !== b.finishes[i]) return b.finishes[i] - a.finishes[i];
+    for (let i = 0; i < 30; i++) if (a.finishes[i] !== b.finishes[i]) return b.finishes[i] - a.finishes[i];
     return 0;
   };
   const drivers = carIdsOf(teams).map((carId) => {

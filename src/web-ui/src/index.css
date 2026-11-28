@@ -120,6 +120,11 @@
   .label {
     @apply text-[11px] font-medium text-muted/80;
   }
+  /* tables with tinted rows: keep the tint clear of the first and last value */
+  .z-rows :is(th, td):first-child { padding-left: 0.625rem; }
+  .z-rows :is(th, td):last-child { padding-right: 0.875rem; }
+  .z-rows td:first-child { border-radius: 0.5rem 0 0 0.5rem; }
+  .z-rows td:last-child { border-radius: 0 0.5rem 0.5rem 0; }
   .display {
     @apply font-display font-bold tracking-tight;
     font-stretch: 82%;

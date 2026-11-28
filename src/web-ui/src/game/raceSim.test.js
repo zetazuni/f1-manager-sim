@@ -2,13 +2,16 @@
 //   node tools/check-ui.mjs http://localhost:5173/ <outDir> tools/checks/m2-sim.json
 // run() returns { pass, failures, stats }.
 import SimulationEngine from '../services/SimulationEngine';
-import { GRID_TEAMS, PLAYER_TEAM_ID } from '../data/grid';
+import { GRID_TEAMS, PLAYER_TEAM_ID, CALENDAR } from '../data/season';
 import { mockTracks } from '../data/mockData';
 import { createRace, startRace, step, snapshot, lapFloat, setStrategy, setTeamOrder, FUEL, ERS } from './raceSim';
-import { CALENDAR } from '../data/calendar';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
 import { teamsWithCars, startProject, carRating } from './factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason, marketList, updateMorale, withMorale } from './career';
+
+const CARS = GRID_TEAMS.length * 2;
+const ME = PLAYER_TEAM_ID;
+const [MATE_A, MATE_B] = GRID_TEAMS.find((t) => t.id === ME).drivers.map((d) => d.name);
 
 function runRace(seed, tweak) {
   const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed });
@@ -38,7 +41,7 @@ export function run() {
   seeds.forEach((seed) => {
     const { race, snap, maxLapFloatJump } = runRace(seed);
     ok(race.over, `seed ${seed}: race never ended`);
-    ok(snap.rows.length === 20, `seed ${seed}: expected 20 rows`);
+    ok(snap.rows.length === CARS, `seed ${seed}: expected ${CARS} rows`);
     const classified = snap.rows.filter((r) => !r.dnf);
     ok(classified.every((r) => r.finished), `seed ${seed}: a running car was not classified`);
     ok(snap.rows[0].lapsDone === 78, `seed ${seed}: winner did ${snap.rows[0].lapsDone} laps`);
@@ -56,7 +59,7 @@ export function run() {
     const gridChanged = snap.rows.filter((r) => !r.dnf && r.grid !== r.pos).length;
     const stopsHist = {};
     race.cars.forEach((c) => { stopsHist[c.stops] = (stopsHist[c.stops] || 0) + 1; });
-    stats.push({ seed, winner: snap.rows[0].name, dnf: 20 - classified.length, gridChanged, passesLogged: passes, stopsHist, aiPenalties });
+    stats.push({ seed, winner: snap.rows[0].name, dnf: CARS - classified.length, gridChanged, passesLogged: passes, stopsHist, aiPenalties });
   });
   ok(stats.some((s) => s.gridChanged > 0), 'no position ever changed from the grid in 5 races');
 
@@ -106,22 +109,22 @@ export function run() {
     }
     return race;
   };
-  const playerPos = (race) => snapshot(race).rows.filter((r) => r.isPlayer).reduce((x, r) => x + (r.dnf ? 21 : r.pos), 0) / 2;
+  const playerPos = (race) => snapshot(race).rows.filter((r) => r.isPlayer).reduce((x, r) => x + (r.dnf ? CARS + 1 : r.pos), 0) / 2;
   // practice draws no random numbers, so lap 1 of the same seed differs by the bonus only
   const lap1 = (practice) => {
     // on pole, so no car ahead can hold it up and hide the difference
-    const gridOrder = ['zetrace-0', ...GRID_TEAMS.flatMap((t) => t.drivers.map((_, i) => `${t.id}-${i}`)).filter((id) => id !== 'zetrace-0')];
+    const gridOrder = [`${ME}-0`, ...GRID_TEAMS.flatMap((t) => t.drivers.map((_, i) => `${t.id}-${i}`)).filter((id) => id !== `${ME}-0`)];
     const race = createRace({ teams: GRID_TEAMS, track: mockTracks[0], engine: new SimulationEngine(), playerTeamId: PLAYER_TEAM_ID, seed: 41, practice, gridOrder });
     startRace(race);
-    return race.cars.find((c) => c.id === 'zetrace-0').lapTime;
+    return race.cars.find((c) => c.id === `${ME}-0`).lapTime;
   };
-  const setupGain = lap1({}) - lap1({ 'zetrace-0': 'setup' });
+  const setupGain = lap1({}) - lap1({ [`${ME}-0`]: 'setup' });
   ok(Math.abs(setupGain - 0.18) < 0.01, `setup work should be worth 0.18 s on lap 1, got ${setupGain.toFixed(3)}`);
   const noPrac = playerPos(runWith(41, {}));
-  const setupPrac = playerPos(runWith(41, { 'zetrace-0': 'setup', 'zetrace-1': 'setup' }));
+  const setupPrac = playerPos(runWith(41, { [`${ME}-0`]: 'setup', [`${ME}-1`]: 'setup' }));
 
   const holdRace = runWith(44, {}, (race) => setTeamOrder(race, PLAYER_TEAM_ID, 'hold'));
-  const teamPasses = holdRace.events.filter((e) => /Danial Hakim passes Theo Laurent|Theo Laurent passes Danial Hakim/.test(e.message)).length;
+  const teamPasses = holdRace.events.filter((e) => e.message.includes(`${MATE_A} passes ${MATE_B}`) || e.message.includes(`${MATE_B} passes ${MATE_A}`)).length;
   ok(teamPasses === 0, `teammates passed each other ${teamPasses} times under hold`);
 
   let swapAsked = null;
@@ -185,7 +188,7 @@ export function run() {
     if (buy.ok) season = buy.season;
     const raceTeams = teamsWithCars(GRID_TEAMS, season.teams);
     const quali = runQualifying({ teams: raceTeams, track, engine, playerTeamId: PLAYER_TEAM_ID, modes: {}, seed: 100 + season.round });
-    ok(quali.length === 20 && quali[0].pos === 1, `${cal.id}: qualifying table broken`);
+    ok(quali.length === CARS && quali[0].pos === 1, `${cal.id}: qualifying table broken`);
     const race = createRace({ teams: raceTeams, track, engine, playerTeamId: PLAYER_TEAM_ID, seed: 200 + season.round, gridOrder: quali.map((q) => q.carId) });
     ok(race.cars.find((c) => c.id === quali[0].carId).grid === 0, `${cal.id}: pole sitter not on pole`);
     race.cars.filter((c) => c.isPlayer).forEach((c) => setStrategy(race, c.id, { autoAi: true }));
@@ -263,8 +266,8 @@ export function run() {
   const base = structuredClone(season2);
   const withSwap = structuredClone(season2);
   updateMorale(base, t2, rowsNow, []);
-  updateMorale(withSwap, t2, rowsNow, [{ yielded: 'zetrace-0', gained: 'zetrace-1' }]);
-  const idOf = (sea, seat) => sea.career.lineups.zetrace[seat];
+  updateMorale(withSwap, t2, rowsNow, [{ yielded: `${ME}-0`, gained: `${ME}-1` }]);
+  const idOf = (sea, seat) => sea.career.lineups[ME][seat];
   ok(withSwap.career.drivers[idOf(withSwap, 0)].morale < base.career.drivers[idOf(base, 0)].morale, 'yielding driver should lose morale');
   ok(withSwap.career.drivers[idOf(withSwap, 1)].morale > base.career.drivers[idOf(base, 1)].morale, 'driver let through should gain morale');
   const happy = withMorale({ ...GRID_TEAMS[0].drivers[0], morale: 95 });

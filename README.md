@@ -32,6 +32,13 @@ Building needs Node.js and Rust; WebView2 comes with Windows 11. Run the command
 again after pulling changes to update the game. The desktop app keeps its own
 saves, separate from the browser version.
 
+### Season packs
+
+The repository ships a fictional season. A private pack can replace it: put a
+`season.js` (same exports as `src/web-ui/src/data/season.js`) and an optional
+`faces/` folder in `Zetrace Private Pack` at the root of the drive, then run the
+install script again. The pack is copied into git-ignored folders only.
+
 ## Run it in a browser
 
 ```bash

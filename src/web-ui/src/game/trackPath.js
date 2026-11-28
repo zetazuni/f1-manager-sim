@@ -9,15 +9,16 @@ export const DEFAULT_CIRCUIT = [
 
 // Pit lane in track units along the main straight (every layout has a straight
 // of at least 66 units after the line; tools/validate-tracks.mjs checks it).
-export const PIT = { startUnits: 6, endUnits: 60, rampUnits: 9, lateral: -9, firstBox: 10, boxSpacing: 4.6 };
+export const PIT = { startUnits: 6, endUnits: 60, rampUnits: 9, lateral: -9, firstBox: 10, boxSpacing: 4.2 };
 
 /** Pit lane as lap fractions for a track of length `total`. */
-export function pitLayout(total) {
+export function pitLayout(total, side = -1) {
   return {
     start: PIT.startUnits / total,
     end: PIT.endUnits / total,
     ramp: PIT.rampUnits / total,
-    lateral: PIT.lateral,
+    side, // -1: pit lane left of travel (outside a clockwise lap), 1: right
+    lateral: -side * PIT.lateral,
     garageLen: PIT.boxSpacing * 0.96,
     boxFrac: (teamIndex) => (PIT.firstBox + teamIndex * PIT.boxSpacing) / total,
   };

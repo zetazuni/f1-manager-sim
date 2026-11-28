@@ -4,6 +4,7 @@ import { ENVIRONMENTS } from '../game/environments';
 import { QUALI_MODE } from '../game/season';
 import { formatLap, PRACTICE } from '../game/raceSim';
 import MoraleMeter from './MoraleMeter';
+import Face from './Face';
 
 const rating = (value, low, high) => {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
@@ -29,7 +30,7 @@ export const TrackCard = ({ track, round, total }) => {
     <div className="panel overflow-hidden">
       <div className="grid gap-0 md:grid-cols-[1.1fr_1fr]">
         <div className="relative flex items-center justify-center p-6" style={{ background: `radial-gradient(circle at 50% 40%, ${env.ground}55, transparent 70%)` }}>
-          <TrackMap points={track.points} className="h-64 w-full max-w-md drop-shadow-[0_0_18px_rgba(225,6,0,0.35)]" width={4.5} />
+          <TrackMap pitSide={track.pitSide} points={track.points} className="h-64 w-full max-w-md drop-shadow-[0_0_18px_rgba(225,6,0,0.35)]" width={4.5} />
           <span className="absolute left-4 top-4 rounded bg-ink/80 px-2 py-1 font-display text-xs font-bold text-data">{env.label}</span>
         </div>
         <div className="space-y-4 p-6">
@@ -64,7 +65,7 @@ export const PreviewPanel = ({ track, round, total, players, modes, onMode, prac
       </p>
       {players.map((p) => (
         <div key={p.carId} className="rounded-lg border border-line bg-panel-2/60 p-3">
-          <p className="mb-2 font-display text-lg font-bold">{p.name}</p>
+          <p className="mb-2 flex items-center gap-2 font-display text-lg font-bold"><Face name={p.name} className="h-14 w-14" />{p.name}</p>
           <p className="label mb-1">Practice programme</p>
           <div className="mb-2 grid grid-cols-3 gap-2">
             {Object.values(PRACTICE).map((pr) => (
@@ -118,7 +119,7 @@ export const QualiPanel = ({ quali, track, onRace }) => {
             <div key={q.carId} className={`flex items-center gap-3 border-t border-line py-1.5 font-mono text-xs ${q.isPlayer ? 'bg-data/10' : ''}`}>
               <span className="w-6 text-right font-bold">{q.pos}</span>
               <span className="h-3 w-1 rounded-sm" style={{ background: q.color }} />
-              <span className={`flex-1 ${q.isPlayer ? 'font-bold text-white' : 'text-cream/75'}`}>{q.name}</span>
+              <span className={`flex flex-1 items-center gap-2 ${q.isPlayer ? 'font-bold text-white' : 'text-cream/75'}`}><Face name={q.name} className="h-6 w-6" />{q.name}</span>
               <span className="text-muted">{q.team}</span>
               <span className={`w-20 text-right ${q.deleted ? 'text-red-400' : q.pos === 1 ? 'text-purple-300' : ''}`}>
                 {q.deleted ? 'DELETED' : q.pos === 1 ? formatLap(q.time) : `+${(q.time - pole.time).toFixed(3)}`}
@@ -129,7 +130,7 @@ export const QualiPanel = ({ quali, track, onRace }) => {
       </div>
       <div className="panel flex flex-col gap-4 p-5">
         <h3 className="panel-title">Grid set</h3>
-        <TrackMap points={track.points} className="h-48 w-full" width={4} />
+        <TrackMap pitSide={track.pitSide} points={track.points} className="h-48 w-full" width={4} />
         {quali.filter((q) => q.isPlayer).map((q) => (
           <p key={q.carId} className="text-sm">
             <b className="font-display text-lg">{q.name}</b> starts <b className="text-data">P{q.pos}</b>
@@ -157,7 +158,7 @@ export const ResultsPanel = ({ result, track, table, teamsTable, isLast, onNext,
             <div key={r.carId} className={`flex items-center gap-3 border-t border-line py-1.5 font-mono text-xs ${who.isPlayer ? 'bg-data/10' : ''}`}>
               <span className="w-8 text-right font-bold">{r.dnf ? 'DNF' : r.pos}</span>
               <span className="h-3 w-1 rounded-sm" style={{ background: who.color }} />
-              <span className={`flex-1 ${who.isPlayer ? 'font-bold text-white' : 'text-cream/75'}`}>{who.name}</span>
+              <span className={`flex flex-1 items-center gap-2 ${who.isPlayer ? 'font-bold text-white' : 'text-cream/75'}`}><Face name={who.name} className="h-6 w-6" />{who.name}</span>
               {r.fastest && <span className="rounded bg-purple-500/30 px-1.5 text-[10px] text-purple-200">FASTEST LAP</span>}
               <span className="w-10 text-right font-bold text-emerald-400">{r.points ? `+${r.points}` : ''}</span>
             </div>
@@ -172,7 +173,7 @@ export const ResultsPanel = ({ result, track, table, teamsTable, isLast, onNext,
           <div key={d.carId} className={`flex items-center gap-3 border-t border-line py-1.5 text-sm ${d.isPlayer ? 'text-data' : ''}`}>
             <span className="w-5 text-right font-mono text-xs">{d.pos}</span>
             <span className="h-3 w-1 rounded-sm" style={{ background: d.color }} />
-            <span className="flex-1">{d.name}</span>
+            <span className="flex flex-1 items-center gap-2"><Face name={d.name} className="h-6 w-6" />{d.name}</span>
             <span className="font-mono font-bold">{d.points}</span>
           </div>
         ))}
@@ -221,6 +222,7 @@ export const SeasonDone = ({ table, teamsTable, onNewSeason }) => {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),transparent_60%)]" />
       <p className="label">Season complete</p>
       <h2 className="display mt-2 text-5xl">World Champion</h2>
+      <Face name={champ.name} className="mx-auto mt-4 h-28 w-28" />
       <p className="mt-4 font-display text-4xl font-bold" style={{ color: champ.color }}>{champ.name}</p>
       <p className="text-muted">{champ.team} | {champ.points} points | {champ.wins} wins</p>
       <p className="mt-6 font-display text-xl font-bold">Constructors: <span style={{ color: champTeam.color }}>{champTeam.name}</span> ({champTeam.points})</p>

@@ -1,4 +1,5 @@
 import React from 'react';
+import Face from './Face';
 
 const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) => (
   <tr className={`border-t border-line ${highlight ? 'bg-data/10 text-white' : 'text-cream/75'}`}>
@@ -6,6 +7,7 @@ const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) =
     <td className="py-2 pr-3">
       <span className="flex items-center gap-2">
         <span className="h-4 w-1 rounded-sm" style={{ background: color }} />
+        <Face name={name} className="h-7 w-7" />
         <span className={highlight ? 'font-bold' : ''}>{name}</span>
         {sub && <span className="text-xs text-muted">{sub}</span>}
       </span>
@@ -29,7 +31,7 @@ const StandingsView = ({ table, teamsTable, roundsDone, total }) => (
         <h3 className="panel-title">Drivers championship</h3>
         <span className="label">after {roundsDone} of {total} rounds</span>
       </div>
-      <table className="w-full text-sm" data-testid="driver-standings">
+      <table className="z-rows w-full text-sm" data-testid="driver-standings">
         <thead>
           <tr className="label text-left"><th className="pb-1 pr-3 text-right">Pos</th><th className="pb-1">Driver</th><th className="pb-1 pr-3 text-right">Wins</th><th className="pb-1 text-right">Points</th></tr>
         </thead>
@@ -45,7 +47,7 @@ const StandingsView = ({ table, teamsTable, roundsDone, total }) => (
         <h3 className="panel-title">Constructors championship</h3>
         <span className="label">2 cars score</span>
       </div>
-      <table className="w-full text-sm" data-testid="team-standings">
+      <table className="z-rows w-full text-sm" data-testid="team-standings">
         <thead>
           <tr className="label text-left"><th className="pb-1 pr-3 text-right">Pos</th><th className="pb-1">Team</th><th className="pb-1 pr-3 text-right">Wins</th><th className="pb-1 text-right">Points</th></tr>
         </thead>

@@ -168,7 +168,7 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
     scCount: 0,
     trackLength: path.total,
     toDistance: makeTimeProfile(path), // time fraction -> distance fraction (corner speed)
-    pit: pitLayout(path.total),
+    pit: pitLayout(path.total, track.pitSide),
     time: 0,
     started: false,
     leaderFinished: false,

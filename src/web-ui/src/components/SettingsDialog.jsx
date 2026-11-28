@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isDesktop, quitGame, toggleFullscreen } from '../services/desktop';
 
 const Choice = ({ label, value, options, onChange, testId }) => (
   <div>
@@ -20,7 +21,7 @@ const Choice = ({ label, value, options, onChange, testId }) => (
 );
 
 /**
- * Settings: graphics quality, sound, default race speed, career reset.
+ * Settings: graphics quality, sound, music, default race speed, career reset.
  * The reset asks twice inside the dialog (no browser popups).
  */
 const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) => {
@@ -43,6 +44,7 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
         />
         <p className="-mt-3 text-[11px] text-muted">Low turns shadows off and renders at standard resolution: use it on older laptops.</p>
         <Choice label="Sound" testId="sound" value={settings.sound} onChange={set('sound')} options={[{ value: true, label: 'On' }, { value: false, label: 'Off' }]} />
+        <Choice label="Lofi music" testId="music" value={settings.music} onChange={set('music')} options={[{ value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }, { value: 'off', label: 'Off' }]} />
         <Choice
           label="Default race speed"
           testId="speed"
@@ -50,6 +52,15 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
           onChange={set('speed')}
           options={[{ value: 1, label: '1x' }, { value: 2, label: '2x' }, { value: 4, label: '4x' }]}
         />
+        {isDesktop && (
+          <div>
+            <p className="label mb-2">Window (F11 for fullscreen, Esc to leave it)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn btn-ghost" onClick={toggleFullscreen}>Fullscreen on / off</button>
+              <button type="button" className="btn btn-ghost" onClick={quitGame}>Quit game</button>
+            </div>
+          </div>
+        )}
         <div className="rounded-lg border border-line bg-ink/60 p-4">
           <p className="label">Career</p>
           <p className="mt-1 text-sm text-cream/75">
