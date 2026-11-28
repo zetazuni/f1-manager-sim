@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zetrace</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+<style>
+  @font-face {
+    font-family: 'Bricolage';
+    src: url('./fonts/bricolage.woff2') format('woff2-variations');
+    font-weight: 200 800;
+    font-stretch: 75% 100%;
+  }
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body {
+    display: grid; place-items: center;
+    font-family: 'Bricolage', 'Segoe UI', system-ui, sans-serif;
+    color: #efe7f7; user-select: none; -webkit-user-select: none;
+  }
+  .card {
+    position: relative; width: 540px; height: 340px; box-sizing: border-box;
+    border-radius: 28px; overflow: hidden; padding: 30px 34px;
+    background:
+      radial-gradient(360px 220px at 0% 110%, rgb(246 178 94 / 0.28), transparent 70%),
+      radial-gradient(340px 240px at 110% 70%, rgb(242 122 138 / 0.2), transparent 70%),
+      radial-gradient(420px 260px at 50% -30%, rgb(124 108 230 / 0.3), transparent 70%),
+      linear-gradient(180deg, #1b1533, #120e1f 60%, #1d1424);
+    border: 1px solid rgb(255 255 255 / 0.09);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    animation: arrive 600ms cubic-bezier(.22,1,.36,1) both;
+  }
+  .row { display: flex; align-items: center; gap: 18px; }
+  .logo {
+    width: 64px; height: 64px; border-radius: 18px; background: #e10600;
+    display: grid; place-items: center; font-weight: 800; font-size: 38px; color: #fff6ec;
+    animation: lamp 2.6s ease-in-out infinite;
+  }
+  h1 {
+    margin: 0; font-weight: 800; font-stretch: 82%; font-size: 52px; letter-spacing: -0.02em; line-height: 1;
+    background: linear-gradient(180deg, #efe7f7 40%, #f6b25e); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { margin: 4px 0 0; font-size: 14px; color: #a99cc4; }
+  svg { position: absolute; right: 26px; bottom: 54px; width: 250px; height: auto; opacity: 0.95; }
+  .track { fill: none; stroke: rgb(255 255 255 / 0.14); stroke-width: 5; stroke-linejoin: round; }
+  .status { position: absolute; left: 34px; bottom: 30px; font-size: 13px; color: #cbbfe0; }
+  .bar { position: absolute; left: 34px; right: 34px; bottom: 18px; height: 3px; border-radius: 3px; background: rgb(255 255 255 / 0.08); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 30%; border-radius: 3px; background: linear-gradient(90deg, #f6b25e, #f27a8a); animation: slide 1.6s cubic-bezier(.45,0,.2,1) infinite; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes lamp {
+    0%, 100% { box-shadow: 0 0 26px rgb(225 6 0 / .55), 0 0 70px rgb(246 178 94 / .2); }
+    50% { box-shadow: 0 0 40px rgb(225 6 0 / .75), 0 0 100px rgb(246 178 94 / .35); }
+  }
+  @keyframes slide { from { transform: translateX(-110%); } to { transform: translateX(380%); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    .bar i { width: 60%; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" role="status" aria-label="Zetrace is loading">
+    <div class="row">
+      <div class="logo">Z</div>
+      <div>
+        <h1>Zetrace</h1>
+        <p class="sub">an F1 manager for quiet evenings</p>
+      </div>
+    </div>
+    <svg viewBox="-60.4 -40.1 116.5 68.9" aria-hidden="true">
+      <defs>
+        <linearGradient id="warm" x1="0" x2="1"><stop offset="0" stop-color="#f6b25e"/><stop offset="1" stop-color="#f27a8a"/></linearGradient>
+      </defs>
+      <path id="lap" class="track" d="M-32.0,22.0 L-29.7,22.0 L-27.3,22.0 L-25.0,22.0 L-22.6,22.0 L-20.3,22.0 L-17.9,22.0 L-15.6,22.0 L-13.2,22.0 L-10.9,22.0 L-8.5,22.0 L-6.2,22.0 L-3.9,22.0 L-1.5,22.0 L0.8,22.0 L3.2,22.0 L5.5,22.0 L7.9,22.1 L10.2,22.1 L12.6,22.2 L14.9,22.3 L17.2,22.4 L19.6,22.5 L21.9,22.6 L24.3,22.7 L26.6,22.8 L29.0,22.8 L31.3,22.8 L33.7,22.7 L36.0,22.6 L38.3,22.3 L40.6,21.8 L42.8,21.1 L44.9,20.0 L46.7,18.5 L48.1,16.6 L49.2,14.5 L49.8,12.3 L50.0,9.9 L49.7,7.6 L48.9,5.4 L47.8,3.3 L46.5,1.4 L45.0,-0.4 L43.2,-1.9 L41.1,-2.9 L38.8,-3.5 L36.5,-3.9 L34.2,-4.2 L31.9,-4.4 L29.5,-4.7 L27.2,-5.2 L25.0,-6.0 L23.0,-7.2 L21.2,-8.7 L19.6,-10.4 L18.3,-12.3 L17.4,-14.5 L17.0,-16.8 L17.8,-19.0 L19.1,-20.9 L20.4,-22.9 L21.7,-24.8 L22.3,-27.1 L21.1,-29.1 L19.2,-30.4 L17.1,-31.5 L14.9,-32.3 L12.7,-32.9 L10.4,-33.4 L8.1,-33.8 L5.7,-34.0 L3.4,-34.1 L1.0,-34.0 L-1.3,-33.9 L-3.6,-33.7 L-6.0,-33.4 L-8.3,-33.1 L-10.6,-32.8 L-12.9,-32.4 L-15.2,-32.0 L-17.5,-31.5 L-19.8,-31.0 L-22.1,-30.5 L-24.4,-30.0 L-26.7,-29.5 L-29.0,-28.9 L-31.2,-28.2 L-33.4,-27.4 L-35.6,-26.5 L-37.7,-25.5 L-39.7,-24.2 L-41.5,-22.8 L-43.3,-21.2 L-44.9,-19.5 L-46.4,-17.7 L-47.7,-15.8 L-49.0,-13.9 L-50.2,-11.8 L-51.2,-9.7 L-52.2,-7.6 L-52.9,-5.4 L-53.5,-3.1 L-54.0,-0.8 L-54.3,1.5 L-54.4,3.9 L-54.4,6.2 L-54.2,8.6 L-53.8,10.9 L-53.1,13.1 L-52.1,15.2 L-50.9,17.2 L-49.5,19.1 L-47.8,20.7 L-45.9,22.1 L-43.7,22.8 L-41.3,22.8 L-39.0,22.5 L-36.7,22.2 L-34.3,22.1 Z" />
+      <circle r="3.4" fill="#e10600" stroke="#fff6ec" stroke-width="1.2">
+        <animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#lap" /></animateMotion>
+      </circle>
+    </svg>
+    <p class="status" id="status">Warming up the tyres</p>
+    <div class="bar"><i></i></div>
+  </div>
+  <script>
+    const lines = ['Warming up the tyres', 'Checking the weather radar', 'Fuelling the cars', 'Opening the garage doors'];
+    let i = 0;
+    setInterval(() => { i = (i + 1) % lines.length; document.getElementById('status').textContent = lines[i]; }, 900);
+  </script>
+</body>
+</html>

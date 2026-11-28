@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Zetrace",
+  "version": "1.0.0",
+  "identifier": "com.zetazuni.zetrace",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Zetrace F1 Manager",
+        "url": "index.html",
+        "width": 1600,
+        "height": 960,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "center": true,
+        "resizable": true,
+        "visible": false,
+        "backgroundColor": "#120e1f"
+      },
+      {
+        "label": "splashscreen",
+        "title": "Zetrace",
+        "url": "splash.html",
+        "width": 560,
+        "height": 360,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": false,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Zetazuni",
+    "shortDescription": "Zetrace F1 Manager",
+    "longDescription": "A cozy F1 team manager: strategy, tyres and weather on race day, upgrades in the factory, drivers on the market.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

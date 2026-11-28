@@ -31,7 +31,7 @@ const TitleScreen = ({ saveInfo, onContinue, onNew }) => (
           {saveInfo ? 'New career (replaces the save)' : 'Start your career'}
         </button>
       </div>
-      <p className="mt-8 text-[11px] text-muted">Fictional teams, drivers and circuits. Your career is saved in this browser.</p>
+      <p className="mt-8 text-[11px] text-muted">Fictional teams, drivers and circuits. Your career is saved on this computer.</p>
     </div>
   </div>
 );

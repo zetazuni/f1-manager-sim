@@ -20,7 +20,19 @@ All teams, drivers and circuits are fictional.
 - **Presentation**: Overview, Chase and TV cameras, live mini-map, start lights,
   pit wall themed interface, autosave, settings.
 
-## Run it
+## Play it (Windows, one click)
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/install-desktop.ps1
+```
+
+This builds the desktop app and adds a **Zetrace** icon to the desktop and Start
+menu. After that, double-click the icon to play: no terminal, server or browser.
+Building needs Node.js and Rust; WebView2 comes with Windows 11. Run the command
+again after pulling changes to update the game. The desktop app keeps its own
+saves, separate from the browser version.
+
+## Run it in a browser
 
 ```bash
 cd src/web-ui
