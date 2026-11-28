@@ -53,7 +53,7 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
         <div className="rounded-lg border border-line bg-ink/60 p-4">
           <p className="label">Career</p>
           <p className="mt-1 text-sm text-cream/75">
-            Saved automatically in this browser after every change.
+            Saved automatically on this computer after every change.
           </p>
           {!confirmReset ? (
             <button type="button" className="btn btn-ghost mt-3 w-full" data-testid="reset-1" onClick={() => setConfirmReset(true)}>

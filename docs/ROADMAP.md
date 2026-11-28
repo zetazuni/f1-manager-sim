@@ -122,6 +122,13 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - 3D: golden-hour sunlight and warmer ambient on the daytime circuits to match the interface.
 - `tools/run-checks.mjs` retries a failed UI check once and labels it, and can run selected checks only.
 
+## M13 One-click desktop app (2026-11-28)
+
+- Tauri 2 wrapper (`src/web-ui/src-tauri`): the game runs in its own window, maximised, with an app icon (`tools/make-icon.py`).
+- Splash screen while the 3D engine loads (`public/splash.html`); the game closes it once its first screen is ready, with a 10 s fallback.
+- `tools/install-desktop.ps1` builds the exe, copies it to `Zetrace App` and adds desktop and Start menu shortcuts.
+- Desktop saves are separate from browser saves (different web origin).
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.
