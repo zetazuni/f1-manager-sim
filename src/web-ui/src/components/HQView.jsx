@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createStage, reducedMotion } from '../game/stage';
+import { colour, createStage, reducedMotion, skyCubemap } from '../game/stage';
+import { useMaterials } from '../game/meshBuilder';
 import { ROOMS, buildHQ, shot } from '../game/hq';
 import { AREAS, TIERS } from '../game/factory';
 
-const SHOT_SECONDS = 6;
+const SHOT_SECONDS = 7;
 const NAV = [{ id: 'campus', label: 'Campus' }, ...ROOMS];
 
 /**
@@ -22,17 +23,19 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
   const color = team?.color;
   const accent = team?.accent;
   const teamId = team?.id;
+  const teamName = team?.name;
   useEffect(() => {
     let stage;
     try {
       stage = createStage(canvasRef.current, {
-        quality, sky: '#130f24', ambient: '#a59cc0', ambientLevel: 0.85, sun: { color: '#ffe6c4', intensity: 1.15, pitch: 52, yaw: 24 }, shadowDistance: 160,
+        quality, sky: '#130f24', ambient: '#c9c7d6', ambientLevel: 0.8, sun: { color: '#fff0d8', intensity: 1.05, pitch: 48, yaw: 34 }, shadowDistance: 340, farClip: 900,
       });
     } catch {
       setFailed(true);
       return undefined;
     }
-    const hq = buildHQ(stage.app, { color, accent, carId: teamId ? `${teamId}-0` : '' });
+    useMaterials(stage.app.graphicsDevice);
+    const hq = buildHQ(stage.app, { color, accent, teamId, name: teamName, sky: skyCubemap(stage.app.graphicsDevice, '#bcd8f2', '#4a4f58') });
     const still = reducedMotion();
     const pos = [...shot('campus').pos];
     const at = [...shot('campus').at];
@@ -41,6 +44,7 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
     let current = null;
     let angle = 0;
     let tourStep = 0;
+    let orbit = 0;
     const tour = ['campus', ...ROOMS.map((r) => r.id)];
 
     let last = performance.now();
@@ -59,6 +63,13 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
         current = target;
         angle = asked ? 0 : Math.floor(tourStep / tour.length);
         clock = 0;
+        orbit = 0;
+        hq.show(target);
+        const outside = target === 'campus';
+        // a bright afternoon outside, a softly lit hall inside
+        stage.camera.camera.clearColor = colour(outside ? '#9db9d6' : '#1b1f27');
+        stage.camera.camera.nearClip = outside ? 6 : 0.4;
+        stage.app.scene.ambientLight = colour(outside ? '#8f96ad' : '#d6d4e0', outside ? 0.75 : 0.85);
         setShown(target);
       } else if (clock > SHOT_SECONDS && !still) {
         clock = 0;
@@ -66,17 +77,18 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
         else tourStep += 1;
         if (asked) setShown(target);
       }
-      const want = shot(current, angle);
+      if (!still) orbit += dt;
+      const want = shot(current, angle, orbit);
       // glide towards the shot, with a slow push-in while it holds
       if (cut && !still) {
         for (let i = 0; i < 3; i++) {
-          pos[i] = want.at[i] + (want.pos[i] - want.at[i]) * 1.18;
+          pos[i] = want.at[i] + (want.pos[i] - want.at[i]) * (current === 'campus' ? 1 : 1.14);
           at[i] = want.at[i];
         }
         fov = want.fov;
       }
       const k = still ? 1 : 1 - Math.exp(-dt * 2.6);
-      const push = still ? 0 : Math.min(1, clock / SHOT_SECONDS) * 0.08;
+      const push = still || current === 'campus' ? 0 : Math.min(1, clock / SHOT_SECONDS) * 0.08;
       for (let i = 0; i < 3; i++) {
         pos[i] += (want.pos[i] + (want.at[i] - want.pos[i]) * push - pos[i]) * k;
         at[i] += (want.at[i] - at[i]) * k;
@@ -84,18 +96,18 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
       fov += (want.fov - fov) * k;
       stage.look(pos, at, fov);
     });
-    window.__zetraceHQ = () => ({ room: current, asked: roomRef.current, camera: pos.map((v) => Math.round(v)) }); // read-only test hook
+    window.__zetraceHQ = () => ({ room: current, asked: roomRef.current, camera: pos.map((v) => Math.round(v)), visible: hq.visible() }); // read-only test hook
     return () => {
       delete window.__zetraceHQ;
       stage.destroy();
     };
-  }, [color, accent, teamId, quality]);
+  }, [color, accent, teamId, teamName, quality]);
 
   if (failed) return null;
   const info = ROOMS.find((r) => r.id === shown);
   return (
     <section className="panel relative overflow-hidden" data-testid="hq-view" data-live={shown}>
-      <canvas ref={canvasRef} className="block h-[360px] w-full bg-black lg:h-[520px]" />
+      <canvas ref={canvasRef} className="block h-[420px] w-full bg-black lg:h-[640px]" />
       <div key={shown} className="hq-cut pointer-events-none absolute inset-0 bg-ink" aria-hidden="true" />
       <div className="pointer-events-none absolute left-3 top-3 z-hud max-w-xs rounded-xl border border-line bg-ink/75 p-3 backdrop-blur">
         <p className="label">{room ? 'Now viewing' : 'Auto tour'}</p>
@@ -110,7 +122,10 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
           );
         })}
         {shown === 'board' && <p className="mt-1 text-xs text-cream/80">Budget: <b className="font-mono text-emerald-400">${state.budget.toFixed(1)}M</b></p>}
-        {shown === 'hub' && <p className="mt-1 text-xs text-cream/80">Simulator, strategy table and trophy shelf</p>}
+        {shown === 'hub' && <p className="mt-1 text-xs text-cream/80">Strategy table, video wall and lounge</p>}
+        {shown === 'sim' && <p className="mt-1 text-xs text-cream/80">Driver in the loop on the motion platform</p>}
+        {shown === 'bay' && <p className="mt-1 text-xs text-cream/80">The race cars being prepared</p>}
+        {shown === 'lobby' && <p className="mt-1 text-xs text-cream/80">Show car, trophies and the team</p>}
         {shown === 'campus' && <p className="mt-1 text-xs text-cream/80">{state.projects.length} project{state.projects.length === 1 ? '' : 's'} in development</p>}
       </div>
       <nav className="absolute inset-x-2 bottom-2 z-hud flex flex-wrap justify-center gap-1 rounded-xl bg-ink/80 p-1.5 backdrop-blur" aria-label="Headquarters rooms">

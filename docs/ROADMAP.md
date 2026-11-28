@@ -188,6 +188,12 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Each team has base, second and third colours with a paint pattern (`game/liveries.js`), sponsor lettering and race numbers.
 - Cars gained more elements and rounder parts. Season packs can set `team.livery` and `driver.number`.
 
+## M25 Headquarters as a facility (2026-11-28)
+
+- Campus view from the air (`game/hqCampus.js`), slowly circling: curved glass building with a lake, workshop, glazed bridge, roundabout, car parks, walkways, woodland, shuttles and staff.
+- Nine departments (`game/hqRooms.js`), new: atrium, race bay and race simulator. Glass walls, upper office floor, side walkways, slatted ceiling.
+- Only the department in view is switched on. Walking, working and cheering people; moving simulator platform with a live road screen.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

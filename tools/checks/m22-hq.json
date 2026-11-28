@@ -17,6 +17,33 @@
   "eval": "'tour ' + JSON.stringify(window.__zetraceHQ())"
  },
  {
+  "eval": "document.querySelector('[data-room=campus]').click(), 'campus'"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "hq-campus-a.png"
+ },
+ {
+  "eval": "window.__c = window.__zetraceHQ().camera.join(); 'sample'"
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "shot": "hq-campus-b.png"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "hq-campus-c.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().camera.join() === window.__c) throw new Error('campus does not rotate'); 'rotates ' + JSON.stringify(window.__zetraceHQ())"
+ },
+ {
   "shot": "hq-campus.png"
  },
  {
@@ -48,6 +75,9 @@
   "shot": "hq-wind.png"
  },
  {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'wind') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only wind'"
+ },
+ {
   "eval": "document.querySelector('[data-room=power]').click(), 'power'"
  },
  {
@@ -74,6 +104,9 @@
  },
  {
   "shot": "hq-power.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'power') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only power'"
  },
  {
   "eval": "document.querySelector('[data-room=factory]').click(), 'factory'"
@@ -104,6 +137,9 @@
   "shot": "hq-factory.png"
  },
  {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'factory') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only factory'"
+ },
+ {
   "eval": "document.querySelector('[data-room=rig]').click(), 'rig'"
  },
  {
@@ -130,6 +166,9 @@
  },
  {
   "shot": "hq-rig.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'rig') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only rig'"
  },
  {
   "eval": "document.querySelector('[data-room=hub]').click(), 'hub'"
@@ -160,6 +199,9 @@
   "shot": "hq-hub.png"
  },
  {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'hub') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only hub'"
+ },
+ {
   "eval": "document.querySelector('[data-room=board]').click(), 'board'"
  },
  {
@@ -186,6 +228,93 @@
  },
  {
   "shot": "hq-board.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'board') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only board'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=lobby]').click(), 'lobby'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=lobby]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-lobby.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'lobby') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only lobby'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=bay]').click(), 'bay'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=bay]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-bay.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'bay') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only bay'"
+ },
+ {
+  "eval": "document.querySelector('[data-room=sim]').click(), 'sim'"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "shot": "hq-tick.png"
+ },
+ {
+  "waitFor": "[data-testid=hq-view][data-live=sim]",
+  "timeout": 60000
+ },
+ {
+  "wait": 900
+ },
+ {
+  "shot": "hq-sim.png"
+ },
+ {
+  "eval": "if (window.__zetraceHQ().visible.join() !== 'sim') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only sim'"
  },
  {
   "eval": "document.querySelector('[data-visit=aeroHighSpeed]').click(), 'aero row'"

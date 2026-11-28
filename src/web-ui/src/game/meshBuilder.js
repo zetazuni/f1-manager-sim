@@ -167,6 +167,76 @@ export class MeshBuilder {
     }
   }
 
+  /** One triangle, wound so that it faces along `n`. Corners are [x, y, z]. */
+  triangle(a, b, c, n, [r, g, bl], alpha = 1) {
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const facing = (u[1] * v[2] - u[2] * v[1]) * n[0] + (u[2] * v[0] - u[0] * v[2]) * n[1] + (u[0] * v[1] - u[1] * v[0]) * n[2];
+    const base = this.vertexCount;
+    for (const p of facing >= 0 ? [a, b, c] : [a, c, b]) {
+      this.positions.push(...p);
+      this.normals.push(...n);
+      this.colors.push(r, g, bl, alpha);
+    }
+    this.indices.push(base, base + 1, base + 2);
+  }
+
+  /**
+   * A slab with any outline that every part of can be seen from its middle
+   * (rounded rectangles, ellipses, lakes). points = [[x, z], ...] in order.
+   */
+  slab({ points, y0 = 0, y1 = 1, color, side = null }) {
+    const top = this.color(color);
+    const wall = this.color(side || color);
+    const n = points.length;
+    const cx = points.reduce((s, p) => s + p[0], 0) / n;
+    const cz = points.reduce((s, p) => s + p[1], 0) / n;
+    for (let i = 0; i < n; i++) {
+      const [ax, az] = points[i];
+      const [bx, bz] = points[(i + 1) % n];
+      this.triangle([cx, y1, cz], [ax, y1, az], [bx, y1, bz], [0, 1, 0], top);
+      let nx = bz - az;
+      let nz = ax - bx;
+      const len = Math.hypot(nx, nz) || 1;
+      nx /= len;
+      nz /= len;
+      if (nx * ((ax + bx) / 2 - cx) + nz * ((az + bz) / 2 - cz) < 0) {
+        nx = -nx;
+        nz = -nz;
+      }
+      const shaded = wall.map((v) => v * (0.8 + 0.2 * Math.max(0, nx * 0.6 + nz * 0.8)));
+      this.triangle([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [nx, 0, nz], shaded);
+      this.triangle([ax, y0, az], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], shaded);
+    }
+  }
+
+  /** A smooth ball (heads, bushes, tree crowns). */
+  sphere({ pos, radius, color, scale = [1, 1, 1], seg = 12 }) {
+    const [r, g, b] = this.color(color);
+    const rings = Math.max(4, Math.round(seg * 0.6));
+    const base = this.vertexCount;
+    for (let i = 0; i <= rings; i++) {
+      const phi = (i / rings) * Math.PI;
+      for (let j = 0; j <= seg; j++) {
+        const th = (j / seg) * Math.PI * 2;
+        const nx = Math.sin(phi) * Math.cos(th);
+        const ny = Math.cos(phi);
+        const nz = Math.sin(phi) * Math.sin(th);
+        this.positions.push(pos[0] + nx * radius * scale[0], pos[1] + ny * radius * scale[1], pos[2] + nz * radius * scale[2]);
+        this.normals.push(nx, ny, nz);
+        const shade = 0.82 + 0.22 * Math.max(0, ny);
+        this.colors.push(r * shade, g * shade, b * shade, 1);
+      }
+    }
+    for (let i = 0; i < rings; i++) {
+      for (let j = 0; j < seg; j++) {
+        const a = base + i * (seg + 1) + j;
+        const c = a + seg + 1;
+        this.indices.push(a, a + 1, c, a + 1, c + 1, c);
+      }
+    }
+  }
+
   /** Build the mesh. Returns null when nothing was added. */
   build(device) {
     if (!this.indices.length) return null;
