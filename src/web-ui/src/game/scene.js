@@ -3,7 +3,7 @@ import { pitLayout } from './trackPath';
 import { GRID_SLOT_UNITS } from './raceSim';
 import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, materialCache, useMaterials, dropMaterials } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
-import { trackside, sponsorBoards } from './details';
+import { trackside, sponsorBoards, clearance } from './details';
 
 export const TRACK_WIDTH = 7;
 
@@ -133,7 +133,7 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const glow = new MeshBuilder();
 
   // Grass and run-off
-  box(root, { pos: [0, -0.5, 0], scale: [900, 1, 900], color: theme.ground, shadows: false });
+  box(root, { pos: [0, -0.58, 0], scale: [900, 1, 900], color: theme.ground, shadows: false }); // top at -0.08
   // Ribbon materials are two-sided so the triangle winding never hides a strip
   meshEntity(root, ribbon(device, path, -half - 3, half + 3, 0.01), material(theme.runoff, { gloss: 0.1, twoSided: true }), 'runoff');
 
@@ -235,10 +235,12 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
   // mown bands in the grass beside the run-off
   if (env !== 'city' && env !== 'night' && env !== 'desert') {
-    const band = (i) => Math.floor(i / 4) % 2 === 0;
+    // skip pieces that would fold over on the inside of a bend or lie on another part of the lap
+    const clear = path.points.map((p) => [1, -1].every((sd) => clearance(path, p.x + p.nx * sd * (half + 8), p.z + p.nz * sd * (half + 8)) > half + 5.5));
+    const band = (i) => Math.floor(i / 4) % 2 === 0 && clear[i];
     const mown = material(theme.ground2, { gloss: 0.05, twoSided: true });
-    meshEntity(root, ribbon(device, path, half + 3, half + 8, 0.006, band), mown, 'mown-l');
-    meshEntity(root, ribbon(device, path, -half - 8, -half - 3, 0.006, band), mown, 'mown-r');
+    meshEntity(root, ribbon(device, path, half + 3, half + 8, -0.035, band), mown, 'mown-l');
+    meshEntity(root, ribbon(device, path, -half - 8, -half - 3, -0.035, band), mown, 'mown-r');
   }
 
   // rubber laid down along the middle of the road

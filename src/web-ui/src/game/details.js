@@ -5,7 +5,7 @@ import * as pc from 'playcanvas';
 
 const HALF = 3.5; // half the track width
 
-const clearance = (path, x, z) => {
+export const clearance = (path, x, z) => {
   let best = Infinity;
   for (const p of path.points) best = Math.min(best, Math.hypot(p.x - x, p.z - z));
   return best;

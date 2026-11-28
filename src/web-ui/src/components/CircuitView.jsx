@@ -42,6 +42,8 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
     const still = reducedMotion();
     stage.app.on('update', (dt) => {
       const mode = viewRef.current;
+      // depth precision depends on the near plane: push it out for the distant shots
+      stage.camera.camera.nearClip = mode === 'fly' ? 1.5 : Math.max(4, radius * 0.18);
       if (!still) {
         angle += dt * 0.09;
         lap = (lap + dt * 0.032) % 1;

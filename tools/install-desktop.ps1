@@ -50,13 +50,22 @@ $exe = Join-Path $InstallDir 'Zetrace.exe'
 try { Copy-Item $built $exe -Force }
 catch { throw "Could not replace $exe. Close the game and run this again. ($_)" }
 
+# Windows caches shortcut icons by path, so a redesigned icon needs a new file name
+$icon = Join-Path $webUi 'src-tauri/icons/icon.ico'
+$stamp = (Get-FileHash $icon).Hash.Substring(0, 8)
+Get-ChildItem $InstallDir -Filter 'zetrace-*.ico' | Remove-Item -Force
+$iconCopy = Join-Path $InstallDir "zetrace-$stamp.ico"
+Copy-Item $icon $iconCopy -Force
+
 $shell = New-Object -ComObject WScript.Shell
 foreach ($folder in 'Desktop', 'Programs') {
     $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath($folder)) 'Zetrace.lnk'))
     $link.TargetPath = $exe
     $link.WorkingDirectory = $InstallDir
     $link.Description = 'Zetrace F1 Manager'
+    $link.IconLocation = "$iconCopy,0"
     $link.Save()
     Write-Host "Shortcut: $($link.FullName)"
 }
+& "$env:SystemRoot\System32\ie4uinit.exe" -show  # ask Explorer to reload icons
 Write-Host "Installed: $exe"

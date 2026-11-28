@@ -221,7 +221,7 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
           cam.nearClip = 1;
         } else {
           cam.projection = pc.PROJECTION_PERSPECTIVE;
-          cam.nearClip = 0.3;
+          cam.nearClip = mode === 'tv' ? 1.5 : 0.6;
         }
       }
 
