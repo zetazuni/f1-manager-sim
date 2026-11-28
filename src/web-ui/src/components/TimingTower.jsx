@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatLap } from '../game/raceSim';
 import TyreBadge from './TyreBadge';
+import Face from './Face';
 
 const TimingTower = ({ snap, focusId, onFocus }) => (
   <aside className="panel p-4 lg:col-span-2 2xl:col-span-1">
@@ -41,6 +42,7 @@ const TimingTower = ({ snap, focusId, onFocus }) => (
               <td className="py-1.5 pr-2 font-bold">{r.pos}</td>
               <td className="py-1.5 pr-2">
                 <span className="mr-2 inline-block h-3 w-1 rounded-sm align-middle" style={{ background: r.color }} />
+                <Face name={r.name} className="mr-1 inline-block h-5 w-5 align-middle" />
                 <span className={r.isPlayer ? 'font-bold text-white' : ''}>{r.code}</span>
                 <span className="ml-2 hidden text-muted/70 md:inline">{r.team}</span>
               </td>

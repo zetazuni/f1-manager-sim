@@ -1,4 +1,5 @@
 import React from 'react';
+import Face from './Face';
 
 const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) => (
   <tr className={`border-t border-line ${highlight ? 'bg-data/10 text-white' : 'text-cream/75'}`}>
@@ -6,6 +7,7 @@ const Row = ({ pos, color, name, sub, points, wins, highlight, leaderPoints }) =
     <td className="py-2 pr-3">
       <span className="flex items-center gap-2">
         <span className="h-4 w-1 rounded-sm" style={{ background: color }} />
+        <Face name={name} className="h-7 w-7" />
         <span className={highlight ? 'font-bold' : ''}>{name}</span>
         {sub && <span className="text-xs text-muted">{sub}</span>}
       </span>

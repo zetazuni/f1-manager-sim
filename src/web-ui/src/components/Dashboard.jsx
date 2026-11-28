@@ -4,6 +4,7 @@ import { playClickSound } from '../services/AudioManager';
 import { COMPOUNDS, COMPOUND_KEYS, WET_KEYS } from '../game/tyres';
 import TyreBadge from './TyreBadge';
 import MoraleMeter from './MoraleMeter';
+import Face from './Face';
 
 const EVENT_COLOR = {
   danger: 'text-red-400',
@@ -49,7 +50,7 @@ const DriverCard = ({ row, totalLaps, started, focused, onFocus, onStrategy }) =
         <span className="flex items-baseline gap-3">
           <span className="font-display text-3xl font-bold leading-none">P{row.pos}</span>
           <span>
-            <span className="block font-display text-lg font-bold leading-tight">{row.name}</span>
+            <span className="flex items-center gap-2 font-display text-lg font-bold leading-tight"><Face name={row.name} className="h-12 w-12" />{row.name}</span>
             <span className="flex items-center gap-2 text-[11px] text-muted">
               from P{row.grid} {row.pos < row.grid ? `(+${row.grid - row.pos})` : ''}
               <MoraleMeter value={row.morale} compact />

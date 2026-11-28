@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatLap } from '../game/raceSim';
+import Face from './Face';
 
 const RaceSummaryModal = ({ isOpen, onClose, onRestart, restartLabel = 'NEW RACE', snap, trackName }) => {
   if (!isOpen) return null;
@@ -22,6 +23,7 @@ const RaceSummaryModal = ({ isOpen, onClose, onRestart, restartLabel = 'NEW RACE
                   <td className="py-1 pr-2 font-bold">{r.dnf ? 'DNF' : r.pos}</td>
                   <td className="py-1 pr-2">
                     <span className="mr-2 inline-block h-3 w-1 rounded-sm align-middle" style={{ background: r.color }} />
+                    <Face name={r.name} className="mr-1 inline-block h-5 w-5 align-middle" />
                     {r.name}
                   </td>
                   <td className="py-1 pr-2 text-muted/70">{r.team}</td>

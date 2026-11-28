@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { driverRating, salaryAsk, marketList } from '../game/career';
 import MoraleMeter from './MoraleMeter';
+import Face from './Face';
 
 const Stars = ({ potential }) => {
   // scouting is not exact: show potential as stars rounded to halves
@@ -64,7 +65,7 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
             return (
               <div key={id} className={`rounded-lg border p-4 ${expired ? 'border-amber-400/50 bg-amber-400/5' : 'border-line bg-panel-2/50'}`}>
                 <div className="flex items-baseline justify-between">
-                  <p className="font-display text-xl font-bold">{d.name}</p>
+                  <p className="flex items-center gap-2 font-display text-xl font-bold"><Face name={d.name} className="h-12 w-12" />{d.name}</p>
                   <p className="font-mono text-sm">{driverRating(d)} <span className="text-muted">ovr</span></p>
                 </div>
                 <p className="text-xs text-muted">Age {d.age} | <Stars potential={d.potential} /> | ${(d.salary / 1e6).toFixed(1)}M a year</p>
@@ -113,7 +114,7 @@ const OffSeasonScreen = ({ season, playerTeamId, teamPos, onSign, onStart, teamN
                   return (
                     <tr key={d.id} className="border-t border-line">
                       <td className="py-2">
-                        <p className="font-bold">{d.name}</p>
+                        <p className="flex items-center gap-2 font-bold"><Face name={d.name} className="h-8 w-8" />{d.name}</p>
                         <p className="flex items-center gap-2 text-[11px] text-muted">
                           {d.contract ? `Leaving ${teamName(d.contract.teamId)}` : 'Free agent'}
                           <MoraleMeter value={d.morale} compact />
