@@ -317,7 +317,7 @@
   "eval": "if (window.__zetraceHQ().visible.join() !== 'sim') throw new Error('other rooms visible: ' + window.__zetraceHQ().visible); 'only sim'"
  },
  {
-  "eval": "document.querySelector('[data-visit=aeroHighSpeed]').click(), 'aero row'"
+  "eval": "document.querySelector('[data-visit=frontWing]').click(), 'aero row'"
  },
  {
   "wait": 600
@@ -326,7 +326,7 @@
   "eval": "if (window.__zetraceHQ().asked !== 'wind') throw new Error('aero row did not go to the tunnel'); 'aero -> wind'"
  },
  {
-  "eval": "document.querySelector('[data-upgrade=\"powerUnit-medium\"]').click(), 'buy PU'"
+  "eval": "document.querySelector('[data-facility=power]').click(), 'buy PU'"
  },
  {
   "wait": 600

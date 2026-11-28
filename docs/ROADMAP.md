@@ -198,6 +198,13 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 
 - Road and footpath layout moved to `game/hqLayout.js`; footpaths no longer touch any road and walkers keep to them (`tools/validate-campus.mjs`).
 
+## M27 Parts, spares and facilities (2026-11-28)
+
+- Six parts (front wing, rear wing, underfloor, sidepods, suspension, chassis): research, then manufacturing 2 to 4 copies. Crashes destroy parts; with no spare that car runs the old or a repaired part.
+- The simulation's six car numbers are derived from the season's base plus what parts add; power unit and ERS are supplier-fixed.
+- Nine facilities with three levels, building time and an effect each; HQ rooms show the level, new equipment and building sites, and the campus grows.
+- Save version 2: old careers convert and unfinished upgrades are refunded. AI teams use the same system.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

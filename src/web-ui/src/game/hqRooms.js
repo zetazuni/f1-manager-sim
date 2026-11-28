@@ -3,7 +3,7 @@
 // slatted ceiling. Only the department in view exists on screen.
 
 import * as pc from 'playcanvas';
-import { materialCache } from './meshBuilder';
+import { materialCache, glowMaterial } from './meshBuilder';
 import { buildCar } from './scene';
 import { walker, worker, cheerer, person } from './hqKit';
 import { inkOn } from './liveries';
@@ -515,7 +515,81 @@ const BUILDERS = {
   },
 };
 
+// ---- what an upgrade looks like -----------------------------------------
+
+/** Equipment every hall gains, plus what is particular to it. */
+function upgrades(g, id, ctx) {
+  const { color, accent } = ctx;
+  const level = ctx.levels?.[id] || 1;
+  // level plate on the side glass, one lit bar per level
+  g.box(-14.7, 3.4, 6, 0.1, 1.7, 3.4, '#111827');
+  g.sign(`Level ${level}`, -14.62, 3.8, 6, 2.8, 0.6, '#ffffff', 90);
+  for (let i = 0; i < 3; i++) g[i < level ? 'lamp' : 'box'](-14.62, 2.95, 5.1 + i * 0.9, 0.05, 0.28, 0.7, i < level ? '#f6b25e' : '#374151');
+
+  if (level >= 2) {
+    for (const side of [-1, 1]) {
+      g.lamp(side * 14.4, 0.1, 1, 0.2, 0.05, D - 2, accent); // floor light strips
+      g.box(side * 11.5, 2.1, -10.9, 1.6, 4, 1, '#1f2937'); // server and tool towers
+      for (let k = 0; k < 8; k++) g.lamp(side * 11.5, 0.5 + k * 0.45, -10.37, 1.2, 0.08, 0.04, k % 2 ? '#22d3ee' : '#a3e635');
+    }
+    desk(g, 11.8, 9.4, '#f6b25e');
+    worker(g, 11.8, 0, 10.6, { pose: 'sit', yaw: 180, shirt: color, seed: 12 });
+    walker(g, [[-13, 10.6], [13, 10.6], [13, 11.2], [-13, 11.2]], { shirt: color, seed: 13, offset: 7 });
+  }
+  if (level >= 3) {
+    // gold trim, hanging banners and a hologram of the part being studied
+    g.lamp(0, 4.36, -11.72, W, 0.08, 0.06, '#fbbf24');
+    for (const x of [-12, 12]) {
+      g.box(x, 7.2, 1, 2.2, 3.4, 0.08, color);
+      g.box(x, 5.4, 1, 2.2, 0.22, 0.12, '#fbbf24');
+    }
+    g.cyl(-11.8, 0.4, 9, 1.5, 0.8, '#1f2937', [0, 0, 0], 40);
+    g.lamp(-11.8, 0.82, 9, 1.9, 0.03, 1.9, '#38bdf8');
+    g.part((m) => {
+      m.box({ pos: [0, 0, 0], scale: [2.4, 0.1, 0.7], color: '#7dd3fc' });
+      m.box({ pos: [0, 0.35, -0.2], scale: [2, 0.08, 0.35], color: '#bae6fd', rot: [14, 0, 0] });
+      for (const x of [-1.2, 1.2]) m.box({ pos: [x, 0.15, 0], scale: [0.08, 0.7, 0.8], color: '#38bdf8' });
+    }, -11.8, 2, 9, (e, t) => e.setLocalEulerAngles(0, t * 40, 0), glowMaterial());
+    worker(g, -10, 0, 9.4, { yaw: 270, shirt: '#f1f5f9', seed: 14 });
+  }
+  // extra machinery belonging to this hall
+  for (let n = 2; n <= level; n++) {
+    const x = n === 2 ? -4.5 : 4.5;
+    if (id === 'wind' || id === 'sim' || id === 'hub') {
+      g.box(x * 2.4, 1.9, 2.6, 2.8, 1.7, 0.1, '#0b1020');
+      g.lamp(x * 2.4, 1.9, 2.66, 2.6, 1.5, 0.02, n === 2 ? '#0891b2' : '#7c3aed');
+      g.box(x * 2.4, 0.5, 2.6, 0.2, 1.1, 0.2, '#64748b');
+    } else if (id === 'power' || id === 'rig') {
+      g.box(x * 2.5, 0.5, -7.6, 3, 1, 2, '#3f4652');
+      g.cyl(x * 2.5, 1.5, -7.6, 0.8, 2.2, '#aeb4bd', [0, 0, 90]);
+      g.cyl(x * 2.5, 1.5, -7.6, 0.5, 2.4, accent, [0, 0, 90]);
+    } else if (id === 'factory' || id === 'bay') {
+      g.box(x * 2.5, 1, -7.4, 3.2, 2, 2.4, '#e2e8f0');
+      g.glass(x * 2.5, 1.5, -6.16, 2.6, 0.9, 0.05);
+      g.lamp(x * 2.5, 2.1, -6.14, 2.4, 0.12, 0.04, '#22d3ee');
+    } else {
+      g.box(x * 2.5, 0.6, -9.8, 2.6, 1.2, 0.9, '#7c4a2d');
+      for (let i = 0; i < 4; i++) g.cyl(x * 2.5 - 0.9 + i * 0.6, 1.55, -9.8, 0.18, 0.7, '#fbbf24', [0, 0, 0], 14);
+    }
+  }
+  // builders at work
+  if (ctx.sites?.includes(id)) {
+    for (const x of [9, 11.5, 14]) for (const z of [-9.8, -7.6]) g.box(x, 2.2, z, 0.12, 4.4, 0.12, '#f59e0b');
+    for (const y of [1.5, 3, 4.3]) {
+      for (const z of [-9.8, -7.6]) g.box(11.5, y, z, 5.2, 0.1, 0.1, '#f59e0b');
+      g.box(11.5, y + 0.08, -8.7, 5, 0.08, 2.2, '#b45309');
+    }
+    for (let i = 0; i < 6; i++) {
+      g.cyl(8.4 + i * 1.1, 0.45, -6.2, 0.18, 0.9, i % 2 ? '#f97316' : '#f8fafc', [0, 0, 0], 12);
+    }
+    g.sign('Upgrading', 11.5, 3.8, -7.5, 4, 0.75, '#b45309');
+    worker(g, 9, 0, -5.4, { yaw: 180, shirt: '#f97316', seed: 15 });
+    worker(g, 12, 3.1, -8.6, { shirt: '#f97316', seed: 16 });
+  }
+}
+
 export function buildRoom(g, id, ctx) {
   BUILDERS[id](g, ctx);
+  upgrades(g, id, ctx);
   return g.finish();
 }

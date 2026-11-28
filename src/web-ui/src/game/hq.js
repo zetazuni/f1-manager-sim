@@ -6,21 +6,22 @@ import { useMaterials } from './meshBuilder';
 import { createGroup } from './hqKit';
 import { buildCampus } from './hqCampus';
 import { buildRoom } from './hqRooms';
+import { PARTS } from './factory';
 
-/** id, name and the car areas worked on there. */
+/** id and name of each department (ids match the upgradable facilities). */
 export const ROOMS = [
-  { id: 'lobby', label: 'Atrium', areas: [] },
-  { id: 'wind', label: 'Wind tunnel', areas: ['aeroHighSpeed', 'aeroLowSpeed'] },
-  { id: 'power', label: 'Powertrain lab', areas: ['powerUnit', 'ersEfficiency'] },
-  { id: 'factory', label: 'Composites floor', areas: ['chassisWeight'] },
-  { id: 'bay', label: 'Race bay', areas: [] },
-  { id: 'rig', label: 'Reliability rig', areas: ['reliability'] },
-  { id: 'sim', label: 'Race simulator', areas: [] },
-  { id: 'hub', label: 'Team hub', areas: [] },
-  { id: 'board', label: 'Board room', areas: [] },
+  { id: 'lobby', label: 'Atrium' },
+  { id: 'wind', label: 'Wind tunnel' },
+  { id: 'power', label: 'Powertrain lab' },
+  { id: 'factory', label: 'Composites floor' },
+  { id: 'bay', label: 'Race bay' },
+  { id: 'rig', label: 'Reliability rig' },
+  { id: 'sim', label: 'Race simulator' },
+  { id: 'hub', label: 'Team hub' },
+  { id: 'board', label: 'Board room' },
 ];
 
-export const roomOfArea = (area) => ROOMS.find((r) => r.areas.includes(area))?.id || 'hub';
+export const roomOfArea = (part) => PARTS.find((p) => p.key === part)?.room || 'hub';
 
 // camera shots inside a hall: [position, look at, vertical fov]
 const SHOTS = {
@@ -46,9 +47,9 @@ export function shot(roomId, index = 0, time = 0) {
   return { pos, at, fov };
 }
 
-export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600', teamId = '', name = 'Zetrace Racing', sky = null } = {}) {
+export function buildHQ(app, { color = '#1e3a8a', accent = '#e10600', teamId = '', name = 'Zetrace Racing', sky = null, levels = {}, sites = [] } = {}) {
   useMaterials(app.graphicsDevice);
-  const ctx = { color, accent, teamId, name, sky };
+  const ctx = { color, accent, teamId, name, sky, levels, sites };
   const groups = new Map();
   let active = null;
   let time = 0;

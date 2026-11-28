@@ -1,30 +1,114 @@
 [
-  { "waitFor": "[data-tab=hq]" },
-  { "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'" },
-  { "waitFor": "[data-testid=hq]" },
-  { "eval": "'budget before ' + document.querySelector('[data-testid=budget]').textContent" },
-  { "eval": "document.querySelector('[data-upgrade=\"powerUnit-medium\"]').click(), 'buy PU medium'" },
-  { "eval": "document.querySelector('[data-upgrade=\"chassisWeight-small\"]').click(), 'buy weight small'" },
-  { "wait": 300 },
-  { "eval": "'budget after ' + document.querySelector('[data-testid=budget]').textContent + ' | msg: ' + document.querySelector('[data-testid=hq-message]').textContent + ' | third disabled: ' + document.querySelector('[data-upgrade=\"aeroLowSpeed-small\"]').disabled" },
-  { "eval": "document.querySelector('[data-testid=perf-chart] > div').dispatchEvent(new MouseEvent('mouseover', {bubbles: true})), 'hover'" },
-  { "wait": 300 },
-  { "shot": "m5-hq.png" },
-  { "eval": "[...document.querySelectorAll('button')].find(b => b.textContent === 'Table').click(), 'table'" },
-  { "wait": 200 },
-  { "eval": "document.querySelectorAll('[data-testid=perf-table] tbody tr').length + ' table rows'" },
-  { "eval": "document.querySelector('[data-tab=weekend]').click(), 'weekend'" },
-  { "waitFor": "[data-testid=qualify]" },
-  { "eval": "document.querySelector('[data-testid=qualify]').click(), 'qualify'" },
-  { "waitFor": "[data-testid=to-race]" },
-  { "eval": "document.querySelector('[data-testid=to-race]').click(), 'race'" },
-  { "waitFor": "[data-testid=run]" },
-  { "eval": "document.querySelector('[data-testid=run]').click(), document.querySelector('[data-speed=\"4\"]').click(), 'go'" },
-  { "waitFor": "[data-testid=modal-continue]", "timeout": 120000 },
-  { "eval": "document.querySelector('[data-testid=modal-continue]').click(), 'continue'" },
-  { "waitFor": "[data-testid=next-round]" },
-  { "eval": "document.querySelector('[data-tab=hq]').click(), 'hq again'" },
-  { "wait": 400 },
-  { "eval": "'after race: ' + document.querySelector('[data-testid=budget]').textContent + ' | ledger lines ' + document.querySelectorAll('[data-testid=ledger] > div').length" },
-  { "shot": "m5-hq-after.png" }
+ {
+  "waitFor": "[data-tab=hq]"
+ },
+ {
+  "eval": "document.querySelector('[data-tab=hq]').click(), 'hq'"
+ },
+ {
+  "waitFor": "[data-testid=hq]"
+ },
+ {
+  "eval": "'budget before ' + document.querySelector('[data-testid=budget]').textContent"
+ },
+ {
+  "eval": "document.querySelector('[data-research=\"frontWing-small\"]').click(), 'research front wing'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "document.querySelector('[data-research=\"underfloor-medium\"]').click(), 'research underfloor'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "if (!document.querySelector('[data-research=\"chassis-small\"]').disabled) throw new Error('a third research should not fit'); 'budget after ' + document.querySelector('[data-testid=budget]').textContent + ' | ' + document.querySelector('[data-testid=hq-message]').textContent"
+ },
+ {
+  "eval": "document.querySelector('[data-spare=\"chassis\"]').click(), 'spare chassis'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "document.querySelector('[data-facility=\"power\"]').click(), 'upgrade power lab'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "'jobs ' + document.querySelectorAll('[data-testid=in-progress] > div').length"
+ },
+ {
+  "shot": "m5-hq.png"
+ },
+ {
+  "eval": "[...document.querySelectorAll('button')].find(b => b.textContent === 'Table').click(), 'table'"
+ },
+ {
+  "wait": 200
+ },
+ {
+  "eval": "document.querySelectorAll('[data-testid=perf-table] tbody tr').length + ' table rows'"
+ },
+ {
+  "eval": "document.querySelector('[data-tab=weekend]').click(), 'weekend'"
+ },
+ {
+  "waitFor": "[data-testid=qualify]"
+ },
+ {
+  "eval": "document.querySelector('[data-testid=qualify]').click(), 'qualify'"
+ },
+ {
+  "waitFor": "[data-testid=to-race]"
+ },
+ {
+  "eval": "document.querySelector('[data-testid=to-race]').click(), 'race'"
+ },
+ {
+  "waitFor": "[data-testid=run]"
+ },
+ {
+  "eval": "document.querySelector('[data-testid=run]').click(), document.querySelector('[data-speed=\"4\"]').click(), 'go'"
+ },
+ {
+  "waitFor": "[data-testid=modal-continue]",
+  "timeout": 120000
+ },
+ {
+  "eval": "document.querySelector('[data-testid=modal-continue]').click(), 'continue'"
+ },
+ {
+  "waitFor": "[data-testid=next-round]"
+ },
+ {
+  "eval": "document.querySelector('[data-tab=hq]').click(), 'hq again'"
+ },
+ {
+  "waitFor": "[data-testid=hq]"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "'after race: ' + document.querySelector('[data-testid=budget]').textContent + ' | ledger lines ' + document.querySelectorAll('[data-testid=ledger] > div').length"
+ },
+ {
+  "waitFor": "[data-build=\"frontWing-2\"]"
+ },
+ {
+  "eval": "document.querySelector('[data-build=\"frontWing-2\"]').click(), 'build front wing'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "eval": "if (!document.body.textContent.includes('Manufacturing 2')) throw new Error('front wing not in production'); 'in production | spares: ' + document.querySelector('[data-spares=chassis]').textContent"
+ },
+ {
+  "shot": "m5-hq-after.png"
+ }
 ]

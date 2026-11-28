@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { colour, createStage, reducedMotion, skyCubemap } from '../game/stage';
 import { useMaterials } from '../game/meshBuilder';
 import { ROOMS, buildHQ, shot } from '../game/hq';
-import { AREAS, TIERS } from '../game/factory';
+import { PARTS, FACILITIES } from '../game/factory';
 
 const SHOT_SECONDS = 7;
 const NAV = [{ id: 'campus', label: 'Campus' }, ...ROOMS];
@@ -24,6 +24,8 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
   const accent = team?.accent;
   const teamId = team?.id;
   const teamName = team?.name;
+  const levels = FACILITIES.map((f) => state.facilities[f.id]).join('');
+  const sites = state.works.map((w) => w.id).sort().join();
   useEffect(() => {
     let stage;
     try {
@@ -35,7 +37,10 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
       return undefined;
     }
     useMaterials(stage.app.graphicsDevice);
-    const hq = buildHQ(stage.app, { color, accent, teamId, name: teamName, sky: skyCubemap(stage.app.graphicsDevice, '#bcd8f2', '#4a4f58') });
+    const hq = buildHQ(stage.app, {
+      color, accent, teamId, name: teamName, sky: skyCubemap(stage.app.graphicsDevice, '#bcd8f2', '#4a4f58'),
+      levels: Object.fromEntries(FACILITIES.map((f, i) => [f.id, Number(levels[i])])), sites: sites.split(','),
+    });
     const still = reducedMotion();
     const pos = [...shot('campus').pos];
     const at = [...shot('campus').at];
@@ -103,7 +108,7 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
       delete window.__zetraceHQ;
       stage.destroy();
     };
-  }, [color, accent, teamId, teamName, quality]);
+  }, [color, accent, teamId, teamName, quality, levels, sites]);
 
   if (failed) return null;
   const info = ROOMS.find((r) => r.id === shown);
@@ -114,12 +119,17 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
       <div className="pointer-events-none absolute left-3 top-3 z-hud max-w-xs rounded-xl border border-line bg-ink/75 p-3 backdrop-blur">
         <p className="label">{room ? 'Now viewing' : 'Auto tour'}</p>
         <p className="display text-2xl leading-tight" data-testid="hq-room">{info?.label || 'Campus'}</p>
-        {info?.areas.map((key) => {
-          const project = state.projects.find((p) => p.area === key);
+        {info && state.facilities[info.id] && (
+          <p className="mt-1 text-xs text-lantern">Level {state.facilities[info.id]}{state.works.some((w) => w.id === info.id) ? ' | building work in progress' : ''}</p>
+        )}
+        {PARTS.filter((p) => p.room === shown).map((p) => {
+          const research = state.research.find((r) => r.part === p.key);
+          const build = state.builds.find((b) => b.part === p.key);
           return (
-            <p key={key} className="mt-1 text-xs text-cream/80">
-              {AREAS.find((a) => a.key === key).label}: <b className="font-mono">{(state.car[key] * 100).toFixed(1)}</b>
-              {project && <span className="text-lantern"> | {TIERS[project.tier].label} upgrade, {project.roundsLeft} race{project.roundsLeft > 1 ? 's' : ''} left</span>}
+            <p key={p.key} className="mt-1 text-xs text-cream/80">
+              {p.label}: <b className="font-mono">Mk {state.parts[p.key].version + 1}</b>
+              {research && <span className="text-lantern"> | research, {research.roundsLeft} left</span>}
+              {build && <span className="text-lantern"> | building {build.qty}, {build.roundsLeft} left</span>}
             </p>
           );
         })}
@@ -128,16 +138,16 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
         {shown === 'sim' && <p className="mt-1 text-xs text-cream/80">Driver in the loop on the motion platform</p>}
         {shown === 'bay' && <p className="mt-1 text-xs text-cream/80">The race cars being prepared</p>}
         {shown === 'lobby' && <p className="mt-1 text-xs text-cream/80">Show car, trophies and the team</p>}
-        {shown === 'campus' && <p className="mt-1 text-xs text-cream/80">{state.projects.length} project{state.projects.length === 1 ? '' : 's'} in development</p>}
+        {shown === 'campus' && <p className="mt-1 text-xs text-cream/80">Facility levels {FACILITIES.reduce((n, f) => n + state.facilities[f.id], 0)} of {FACILITIES.length * 3}</p>}
       </div>
       <nav className="absolute inset-x-2 bottom-2 z-hud flex flex-wrap justify-center gap-1 rounded-xl bg-ink/80 p-1.5 backdrop-blur" aria-label="Headquarters rooms">
         <button type="button" data-room="tour" onClick={() => onRoom(null)} className={`chip px-3 py-1.5 text-xs ${room === null ? 'bg-data text-ink' : 'chip-off'}`}>Auto tour</button>
         {NAV.map((r) => {
-          const busy = r.areas?.some((a) => state.projects.some((p) => p.area === a));
+          const busy = state.works.some((w) => w.id === r.id) || PARTS.some((p) => p.room === r.id && (state.research.some((x) => x.part === p.key) || state.builds.some((x) => x.part === p.key)));
           return (
             <button key={r.id} type="button" data-room={r.id} onClick={() => onRoom(r.id)} className={`chip relative px-3 py-1.5 text-xs ${room === r.id ? 'bg-lantern text-ink' : 'chip-off'}`}>
               {r.label}
-              {busy && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-rose align-middle" title="Upgrade in development" />}
+              {busy && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-rose align-middle" title="Work in progress" />}
             </button>
           );
         })}

@@ -10,7 +10,7 @@ import { PreviewPanel, QualiPanel, ResultsPanel, SeasonDone } from './components
 import SimulationEngine from './services/SimulationEngine';
 import { GRID_TEAMS, CALENDAR, PLAYER_TEAM_ID as DEFAULT_TEAM_ID } from './data/season';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf, QUALI_MODE } from './game/season';
-import { startProject } from './game/factory';
+import { startResearch, orderBuild, orderSpares, upgradeFacility, seatStats, FACILITIES } from './game/factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './game/career';
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
@@ -31,11 +31,22 @@ const testRound = () => {
   return r >= 1 && r <= CALENDAR.length ? r : null;
 };
 
+// Test hook: ?facilities=3 starts with every building at that level
+const testFacilities = (season) => {
+  const level = Number(new URLSearchParams(window.location.search).get('facilities'));
+  if (level >= 2 && level <= 3) {
+    const ts = season.teams[season.playerTeamId];
+    FACILITIES.forEach((f) => { ts.facilities[f.id] = level; });
+    ts.car = seatStats(ts);
+  }
+  return season;
+};
+
 const newSeason = (teamId = DEFAULT_TEAM_ID) => {
   const season = createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: teamId });
   const r = testRound();
   if (r) season.round = r - 1;
-  return season;
+  return testFacilities(season);
 };
 
 /** Saved career when there is one (and no test hook), otherwise a new season. */
@@ -118,8 +129,9 @@ function App() {
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
-  const startUpgrade = (area, tier) => {
-    const res = startProject(season, PLAYER_TEAM_ID, area, tier);
+  const factoryAction = (kind, ...args) => {
+    const actions = { research: startResearch, build: orderBuild, spares: orderSpares, facility: upgradeFacility };
+    const res = actions[kind](season, PLAYER_TEAM_ID, ...args);
     if (res.ok) setSeason(res.season);
     return res;
   };
@@ -230,7 +242,7 @@ function App() {
           <StandingsView table={table.drivers} teamsTable={table.teams} roundsDone={season.results.length} total={CALENDAR.length} />
         )}
         {tab === 'hq' && (
-          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} quality={settings.quality} />
+          <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onAction={factoryAction} quality={settings.quality} />
         )}
         {tab === 'calendar' && (
           <CalendarView teams={seasonTeams} career={season.career} quality={settings.quality} calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />

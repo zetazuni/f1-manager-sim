@@ -6,7 +6,7 @@ import { GRID_TEAMS, PLAYER_TEAM_ID, CALENDAR } from '../data/season';
 import { mockTracks } from '../data/mockData';
 import { createRace, startRace, step, snapshot, lapFloat, setStrategy, setTeamOrder, FUEL, ERS } from './raceSim';
 import { createSeason, runQualifying, recordRace, advance, standings, raceTrackOf } from './season';
-import { teamsWithCars, startProject, carRating } from './factory';
+import { teamsWithCars, startResearch, orderBuild, orderSpares, upgradeFacility, settleRound, seatStats, createTeamStates, carRating, PARTS, FACILITIES } from './factory';
 import { teamsForSeason, startOffSeason, signDriver, finishOffSeason, marketList, updateMorale, withMorale } from './career';
 
 const CARS = GRID_TEAMS.length * 2;
@@ -30,6 +30,60 @@ function runRace(seed, tweak) {
     }
   }
   return { race, snap: snapshot(race), maxLapFloatJump, guard };
+}
+
+/** Research, manufacturing, spares, crashes and facilities. */
+function factoryTests(ok) {
+  const ME_ID = PLAYER_TEAM_ID;
+  const fresh = () => createSeason({ teams: GRID_TEAMS, calendar: CALENDAR, playerTeamId: ME_ID, seed: 9 });
+  const quiet = GRID_TEAMS.flatMap((t) => t.drivers.map((_, i) => ({ id: `${t.id}-${i}`, pos: i + 1, grid: i + 1, dnf: null, points: 0 })));
+  const pass = (season) => {
+    const next = structuredClone(season);
+    settleRound(next, quiet, GRID_TEAMS);
+    next.round += 1;
+    return next;
+  };
+  const mine = (s) => s.teams[ME_ID];
+  let s = fresh();
+  mine(s).budget = 100;
+  const base = structuredClone(mine(s).car);
+  ok(JSON.stringify(base) === JSON.stringify(GRID_TEAMS.find((t) => t.id === ME_ID).car), 'a new season should start from the grid car numbers');
+  let r = startResearch(s, ME_ID, 'underfloor', 'medium');
+  ok(r.ok, `research refused: ${r.reason}`);
+  s = r.season;
+  ok(!orderBuild(s, ME_ID, 'underfloor', 2).ok, 'built a part before research finished');
+  s = pass(s);
+  ok(!mine(s).designs.underfloor, 'medium research finished after one race');
+  s = pass(s);
+  ok(!!mine(s).designs.underfloor, 'medium research not finished after two races');
+  ok(mine(s).car.aeroHighSpeed === base.aeroHighSpeed, 'a design changed the car before it was built');
+  r = orderBuild(s, ME_ID, 'underfloor', 2);
+  ok(r.ok, `build refused: ${r.reason}`);
+  s = pass(r.season);
+  ok(mine(s).car.aeroHighSpeed > base.aeroHighSpeed && mine(s).parts.underfloor.units === 2, 'the built part was not fitted');
+  // crash with no spare: only that car is slower; with a spare both stay equal
+  const crash = (season, key) => {
+    const next = structuredClone(season);
+    next.teams[ME_ID].parts[key].units -= 1;
+    next.teams[ME_ID].parts[key].last = 0;
+    return next.teams[ME_ID];
+  };
+  const hurt = crash(s, 'underfloor');
+  ok(seatStats(hurt, 0).aeroHighSpeed < seatStats(hurt, 1).aeroHighSpeed, 'the car without a spare should be the slower one');
+  const spare = orderSpares(s, ME_ID, 'underfloor', 1);
+  ok(spare.ok, `spares refused: ${spare.reason}`);
+  const covered = crash(pass(spare.season), 'underfloor');
+  ok(seatStats(covered, 0).aeroHighSpeed === seatStats(covered, 1).aeroHighSpeed, 'a spare should cover one crash');
+  // a real crash in the results destroys a front wing
+  const wreck = structuredClone(s);
+  settleRound(wreck, quiet.map((row) => (row.id === `${ME_ID}-1` ? { ...row, dnf: 'Crashed' } : row)), GRID_TEAMS);
+  ok(wreck.teams[ME_ID].parts.frontWing.units === 2, `a crash should destroy a front wing (units ${wreck.teams[ME_ID].parts.frontWing.units})`);
+  // facilities take time and change the numbers
+  r = upgradeFacility(s, ME_ID, 'power');
+  ok(r.ok, `facility refused: ${r.reason}`);
+  const built = pass(pass(r.season));
+  ok(mine(built).facilities.power === 2 && mine(built).car.powerUnit > mine(s).car.powerUnit, 'powertrain lab level 2 should help the power unit');
+  ok(FACILITIES.length === 9, 'expected nine facilities');
 }
 
 export function run() {
@@ -183,9 +237,10 @@ export function run() {
     const cal = CALENDAR[season.round];
     const track = raceTrackOf(cal);
     const engine = new SimulationEngine();
-    // the player buys a medium power unit upgrade whenever the factory has room
-    const buy = startProject(season, PLAYER_TEAM_ID, ['powerUnit', 'chassisWeight', 'aeroLowSpeed'][season.round % 3], 'medium');
-    if (buy.ok) season = buy.season;
+    // the player builds whatever is designed and starts research on the next part
+    const act = (r) => { if (r.ok) season = r.season; };
+    Object.keys(season.teams[PLAYER_TEAM_ID].designs).forEach((part) => act(orderBuild(season, PLAYER_TEAM_ID, part, 3)));
+    act(startResearch(season, PLAYER_TEAM_ID, PARTS[season.round % PARTS.length].key, 'medium'));
     const raceTeams = teamsWithCars(GRID_TEAMS, season.teams);
     const quali = runQualifying({ teams: raceTeams, track, engine, playerTeamId: PLAYER_TEAM_ID, modes: {}, seed: 100 + season.round });
     ok(quali.length === CARS && quali[0].pos === 1, `${cal.id}: qualifying table broken`);
@@ -221,6 +276,8 @@ export function run() {
   ok(improved >= 6, `only ${improved} teams improved their car over a season`);
   ok(season.ledger.length >= CALENDAR.length * 4, `ledger has ${season.ledger.length} lines`);
   ok(Object.values(season.teams).every((t) => Object.values(t.car).every((v) => v <= 0.995)), 'a car stat broke the ceiling');
+  ok(budgets.every((b) => b >= 0), `a team went into debt: ${budgets.map((b) => b.toFixed(1)).join(', ')}`);
+  factoryTests(ok);
   stats.push({ season: perTrack, champion: tables.drivers[0].name, champPoints: tables.drivers[0].points, totalPoints: driverSum,
     playerBudgetEnd: season.teams[PLAYER_TEAM_ID].budget, ratingGain: GRID_TEAMS.map((t, i) => `${t.short} ${(ratingEnd[i] - ratingStart[i]).toFixed(1)}`).join(', ') });
 

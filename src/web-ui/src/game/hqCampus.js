@@ -51,7 +51,7 @@ function glazedStorey(g, outline, y, height) {
   }
 }
 
-export function buildCampus(app, { sky, color, accent, name }) {
+export function buildCampus(app, { sky, color, accent, name, levels = {}, sites = [] }) {
   seedState = 7;
   const g = createGroup(app, 'campus', { sky });
   const { gloss, mb } = g;
@@ -208,5 +208,41 @@ export function buildCampus(app, { sky, color, accent, name }) {
       e.setLocalEulerAngles(0, (Math.atan2(-Math.sin(a) * mx, Math.cos(a) * mz) * 180) / Math.PI, 0);
     });
   }
+  // upgraded departments add to the buildings: roof plant, solar panels, masts
+  const gained = Object.values(levels).reduce((n, v) => n + v - 1, 0);
+  for (let i = 0; i < Math.min(gained, 18); i++) {
+    const x = -78 + (i % 9) * 6.4;
+    const z = -20 + Math.floor(i / 9) * 14;
+    g.box(x, 7.1, z, 4.6, 0.2, 8, '#1e3a5f', [8, 0, 0]);
+    g.box(x, 7.2, z, 0.12, 0.2, 8, '#93c5fd', [8, 0, 0]);
+  }
+  if (gained >= 5) {
+    // a second glazed wing
+    const wing = rounded(86, -52, 26, 18, 5);
+    mb.slab({ points: rounded(86, -52, 28, 20, 5), y0: 0, y1: 0.3, color: '#9aa1a8' });
+    glazedStorey(g, wing, 0.3, 4);
+    mb.slab({ points: rounded(86, -52, 27, 19, 5), y0: 4.3, y1: 5, color: '#f4f6f8', side: color });
+  }
+  if (gained >= 10) {
+    // observation tower and helipad
+    g.cyl(-96, 10, -40, 2, 20, '#d5dbe2', [0, 0, 0], 24);
+    mb.slab({ points: ring(-96, -40, 6, 6, 32), y0: 20, y1: 22.5, color: '#f4f6f8', side: accent });
+    g.glass(-96, 21.2, -34, 8, 2, 0.1);
+    mb.slab({ points: ring(72, 80, 9, 9, 40), y0: 0, y1: 0.3, color: '#4b4f57' });
+    g.box(72, 0.34, 80, 1, 0.05, 8, '#f8fafc');
+    for (const dx of [-2.6, 2.6]) g.box(72 + dx, 0.34, 80, 1, 0.05, 8, '#f8fafc');
+    g.box(72, 0.34, 80, 4.4, 0.05, 1, '#f8fafc');
+  }
+  // cranes where building work is going on
+  sites.filter(Boolean).forEach((_, i) => {
+    const x = -34 - i * 16;
+    g.box(x, 9, -36, 0.7, 18, 0.7, '#f59e0b');
+    g.part((m) => {
+      m.box({ pos: [6, 0, 0], scale: [14, 0.6, 0.6], color: '#f59e0b' });
+      m.box({ pos: [-2.5, 0, 0], scale: [3, 1.2, 1.2], color: '#64748b' });
+      m.box({ pos: [11, -4, 0], scale: [0.1, 8, 0.1], color: '#334155' });
+      m.box({ pos: [11, -8.4, 0], scale: [2.4, 0.8, 1.4], color: '#cbd5e1' });
+    }, x, 18, -36, (e, t) => e.setLocalEulerAngles(0, Math.sin(t * 0.25 + i * 2) * 70, 0));
+  });
   return g.finish();
 }

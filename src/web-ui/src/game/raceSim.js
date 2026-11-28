@@ -95,7 +95,8 @@ export function createRace({ teams, track, engine, playerTeamId, seed, gridOrder
         id: `${team.id}-${i}`,
         driver: withMorale(driver), // morale nudges consistency and pace for this race
         morale: driver.morale ?? 65,
-        team,
+        // a car missing a new part runs its own numbers
+        team: team.seatCars ? { ...team, car: team.seatCars[i] } : team,
         color: team.color,
         accent: team.accent,
         isPlayer: team.id === playerTeamId,
@@ -211,7 +212,7 @@ function nextLapTime(race, c) {
   const wetSkill = 1.15 - (c.driver.adaptability ?? 85) / 400;
   return engine.calculateLapTime(
     track, c.team, c.driver, c.lapsDone + 1, c.fuel, 'Medium', 0, effectiveErs(c), c.fuelMode,
-  ) + tyreDelta(c.compound, c.tireWear, w) + w * WET_GRIP_LOSS * wetSkill + (c.practice ? PRACTICE[c.practice].pace : 0);
+  ) + tyreDelta(c.compound, c.tireWear, w) + w * WET_GRIP_LOSS * wetSkill + (c.practice ? PRACTICE[c.practice].pace * (c.practice === 'setup' ? c.team.setupBonus || 1 : 1) : 0);
 }
 
 /** Simple AI: spend battery on Attack when it is well charged, and plan pit stops. */
@@ -524,7 +525,7 @@ export function deploySafetyCar(race, lapNo, reason) {
 }
 
 function pitStop(race, c, lapNo) {
-  const loss = (race.track.pitLoss ?? 20) * (race.sc ? SC_PIT_FACTOR : 1);
+  const loss = Math.max(8, (race.track.pitLoss ?? 20) - (c.team.pitBonus || 0)) * (race.sc ? SC_PIT_FACTOR : 1); // a better race bay saves time
   const slow = race.rng() < 0.04;
   const stop = 2.2 + race.rng() * 0.8 + (slow ? 4 + race.rng() * 3 : 0);
   const from = c.compound;

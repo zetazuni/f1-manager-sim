@@ -1,14 +1,14 @@
 // Career save in localStorage. The season is plain JSON already, so saving is
 // a JSON round trip plus a version check and a small migration step.
 
-import { createTeamStates } from './factory';
+import { createTeamStates, migrateTeamState } from './factory';
 import { createCareer } from './career';
 import { PACK_ID } from '../data/season';
 
 // each season pack keeps its own career
 const KEY = `zetrace.career.v1${PACK_ID ? `.${PACK_ID}` : ''}`;
 const SETTINGS_KEY = 'zetrace.settings.v1';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2; // 2: car parts and facilities
 
 export const DEFAULT_SETTINGS = { quality: 'high', sound: true, music: 'normal', speed: 1 };
 
@@ -51,6 +51,7 @@ export function loadCareer({ teams, playerTeamId }) {
   if (!Array.isArray(season.calendar) || typeof season.round !== 'number') return null;
   // migrations for saves made before the factory existed
   if (!season.teams) season.teams = createTeamStates(teams, playerTeamId);
+  Object.values(season.teams).forEach(migrateTeamState);
   if (!season.ledger) season.ledger = [];
   if (!season.news) season.news = [];
   if (!season.career) season.career = createCareer(teams);
