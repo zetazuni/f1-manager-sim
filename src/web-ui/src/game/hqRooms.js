@@ -529,7 +529,9 @@ function upgrades(g, id, ctx) {
   if (level >= 2) {
     for (const side of [-1, 1]) {
       g.lamp(side * 14.4, 0.1, 1, 0.2, 0.05, D - 2, accent); // floor light strips
-      g.box(side * 11.5, 2.1, -10.9, 1.6, 4, 1, '#1f2937'); // server and tool towers
+      // server and tool towers, except where a rack already fills that corner
+      if (side > 0 && (id === 'power' || id === 'factory')) continue;
+      g.box(side * 11.5, 2.1, -10.9, 1.6, 4, 1, '#1f2937');
       for (let k = 0; k < 8; k++) g.lamp(side * 11.5, 0.5 + k * 0.45, -10.37, 1.2, 0.08, 0.04, k % 2 ? '#22d3ee' : '#a3e635');
     }
     desk(g, 11.8, 9.4, '#f6b25e');
@@ -574,17 +576,17 @@ function upgrades(g, id, ctx) {
   }
   // builders at work
   if (ctx.sites?.includes(id)) {
-    for (const x of [9, 11.5, 14]) for (const z of [-9.8, -7.6]) g.box(x, 2.2, z, 0.12, 4.4, 0.12, '#f59e0b');
+    for (const x of [9, 11.5, 14]) for (const z of [-9.2, -7.0]) g.box(x, 2.2, z, 0.12, 4.4, 0.12, '#f59e0b');
     for (const y of [1.5, 3, 4.3]) {
-      for (const z of [-9.8, -7.6]) g.box(11.5, y, z, 5.2, 0.1, 0.1, '#f59e0b');
-      g.box(11.5, y + 0.08, -8.7, 5, 0.08, 2.2, '#b45309');
+      for (const z of [-9.2, -7.0]) g.box(11.5, y, z, 5.2, 0.1, 0.1, '#f59e0b');
+      g.box(11.5, y + 0.08, -8.1, 5, 0.08, 2.2, '#b45309');
     }
     for (let i = 0; i < 6; i++) {
-      g.cyl(8.4 + i * 1.1, 0.45, -6.2, 0.18, 0.9, i % 2 ? '#f97316' : '#f8fafc', [0, 0, 0], 12);
+      g.cyl(8.4 + i * 1.1, 0.45, -5.8, 0.18, 0.9, i % 2 ? '#f97316' : '#f8fafc', [0, 0, 0], 12);
     }
-    g.sign('Upgrading', 11.5, 3.8, -7.5, 4, 0.75, '#b45309');
+    g.sign('Upgrading', 11.5, 3.8, -6.9, 4, 0.75, '#b45309');
     worker(g, 9, 0, -5.4, { yaw: 180, shirt: '#f97316', seed: 15 });
-    worker(g, 12, 3.1, -8.6, { shirt: '#f97316', seed: 16 });
+    worker(g, 12, 3.1, -8, { shirt: '#f97316', seed: 16 });
   }
 }
 

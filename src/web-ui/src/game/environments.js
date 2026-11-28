@@ -131,15 +131,19 @@ const boat = (mb, x, z, rng) => {
 
 /** Concrete street-circuit walls with a coloured top stripe, both sides. */
 function streetWalls(mb, path, pitSide, reg) {
+  const built = [];
   const n = path.points.length;
   for (let i = 0; i < n; i += 2) {
     const f = i / n;
     for (const side of [1, -1]) {
       const p = path.pointAt(f + 1 / n, side * (3.5 + 2.2));
-      if (p.y > 0.1 || trackDistance(path, p.x, p.z) < 3.5 + 1.2) continue; // would stand on another stretch
+      if (p.y > 0.1 || trackDistance(path, p.x, p.z) < 3.5 + 2.05) continue; // would fold over inside a bend or stand on another stretch
       // leave the pit entry and exit open
       if (side === pitSide && (f < 0.2 || f > 0.97)) continue;
       const seg = (2 * path.total) / n;
+      // inside a tight bend pieces pile up and cross: never put two in one spot
+      if (built.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < seg * 0.92)) continue;
+      built.push(p);
       mb.box({ pos: [p.x, 0.5, p.z], scale: [0.5, 1, seg * 1.05], rot: [0, p.heading, 0], color: '#d1d5db' });
       mb.box({ pos: [p.x, 1.05, p.z], scale: [0.55, 0.12, seg * 1.05], rot: [0, p.heading, 0], color: i % 8 < 4 ? '#e10600' : '#f8fafc' });
     }

@@ -58,7 +58,9 @@ export function runQualifying({ teams, track, engine, playerTeamId, modes = {}, 
     const { team, driver } = carById(teams, carId);
     const isPlayer = team.id === playerTeamId;
     const mode = isPlayer ? modes[carId] || QUALI_MODE.Safe : rng() < 0.35 ? QUALI_MODE.Push : QUALI_MODE.Safe;
-    let time = engine.calculateLapTime(track, team, driver, 1, 8, 'Soft', 0, 'Neutral', 'Standard') - 0.9 + (rng() - 0.5) * 0.35;
+    // a car missing a new part qualifies with what it really has
+    const own = team.seatCars ? { ...team, car: team.seatCars[Number(carId.slice(carId.lastIndexOf('-') + 1))] } : team;
+    let time = engine.calculateLapTime(track, own, driver, 1, 8, 'Soft', 0, 'Neutral', 'Standard') - 0.9 + (rng() - 0.5) * 0.35;
     let deleted = false;
     if (mode === QUALI_MODE.Push) {
       time -= PUSH_GAIN * (0.6 + rng() * 0.8);

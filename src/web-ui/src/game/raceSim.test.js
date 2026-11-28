@@ -74,6 +74,18 @@ function factoryTests(ok) {
   ok(spare.ok, `spares refused: ${spare.reason}`);
   const covered = crash(pass(spare.season), 'underfloor');
   ok(seatStats(covered, 0).aeroHighSpeed === seatStats(covered, 1).aeroHighSpeed, 'a spare should cover one crash');
+  // qualifying and team orders with per-car numbers
+  const states = { ...s.teams, [ME_ID]: hurt };
+  const perCar = teamsWithCars(GRID_TEAMS, states);
+  const equal = perCar.map((t) => (t.id === ME_ID ? { ...t, seatCars: [t.car, t.car] } : t));
+  const lapOf = (teams) => runQualifying({ teams, track: raceTrackOf(CALENDAR[0]), engine: new SimulationEngine(), playerTeamId: ME_ID, modes: {}, seed: 5 }).find((q) => q.carId === `${ME_ID}-0`).time;
+  ok(lapOf(perCar) > lapOf(equal), 'a car without its part should qualify slower');
+  const orders = createRace({ teams: perCar, track: raceTrackOf(CALENDAR[0]), engine: new SimulationEngine(), playerTeamId: ME_ID, seed: 44 });
+  setTeamOrder(orders, ME_ID, 'hold');
+  startRace(orders);
+  for (let i = 0; i < 200000 && !orders.over; i++) step(orders, 0.5);
+  const names = GRID_TEAMS.find((t) => t.id === ME_ID).drivers.map((d) => d.name);
+  ok(!orders.events.some((e) => e.message.includes(`${names[0]} passes ${names[1]}`) || e.message.includes(`${names[1]} passes ${names[0]}`)), 'hold order ignored when cars have their own numbers');
   // a real crash in the results destroys a front wing
   const wreck = structuredClone(s);
   settleRound(wreck, quiet.map((row) => (row.id === `${ME_ID}-1` ? { ...row, dnf: 'Crashed' } : row)), GRID_TEAMS);

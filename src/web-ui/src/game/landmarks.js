@@ -291,7 +291,7 @@ const OVER = {
     const g = { pos: [c.x, c.y, c.z], rot: [0, c.heading, 0] };
     for (const side of [-1, 1]) {
       mb.box({ pos: [side * 9, 8, 0], scale: [6, 16, 12], color: '#e2e8f0' }, g);
-      for (let y = 2; y < 15; y += 2.6) mb.box({ pos: [side * 9, y, 6.1], scale: [5, 0.9, 0.2], color: '#1e3a5f' }, g);
+      for (let y = 2; y < 15; y += 2.6) for (const face of [6.1, -6.1]) mb.box({ pos: [side * 9, y, face], scale: [5, 0.9, 0.2], color: '#1e3a5f' }, g);
     }
     mb.box({ pos: [0, 12, 0], scale: [14, 5, 9], color: '#f8fafc' }, g);
     // a glowing wave-shaped shell over the whole thing
@@ -320,8 +320,12 @@ export function buildLandmarks(mb, glow, path, reg, list = []) {
         const bend = Math.max(...turn.map((h) => Math.abs(((h - turn[2] + 540) % 360) - 180)));
         const c = path.pointAt(at);
         if (bend > (type === 'tunnel' ? 38 : 22) || c.y > 0.1 || at * path.total < 90) continue;
-        const legs = [-1, 1].map((sd) => path.pointAt(at, sd * 9)).map((l) => [l.x, l.z, type === 'tunnel' ? 2.4 : 5]);
-        if (!reg.take(legs, `landmark-${type}`, 0.2)) continue;
+        // a tunnel needs both sides clear along its whole length; a hotel only its towers
+        const along = type === 'tunnel' ? [-18, -12, -6, 0, 6, 12, 18] : [0];
+        const legs = along.flatMap((d) => [-1, 1].map((sd) => path.pointAt(at + d / path.total, sd * (type === 'tunnel' ? 6.2 : 9)))).map((l) => [l.x, l.z, type === 'tunnel' ? 2.2 : 5]);
+        // neighbouring pieces of one structure may touch each other
+        if (!legs.every((c) => reg.free([c], 0.1))) continue;
+        reg.add(legs, `landmark-${type}`, 0.1);
         OVER[type]({ mb, glow, path, f: at });
         return { type, placed: true };
       }

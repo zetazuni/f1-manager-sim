@@ -48,6 +48,7 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
         angle += dt * 0.09;
         lap = (lap + dt * 0.032) % 1;
       }
+      if (Number.isFinite(window.__zetraceLap)) lap = window.__zetraceLap; // test hook: hold the flyover here
       if (mode === 'fly') {
         const from = path.pointAt(lap - 14 / path.total);
         const to = path.pointAt(lap + 22 / path.total);
