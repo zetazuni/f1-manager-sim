@@ -37,7 +37,11 @@ if (-not $SkipBuild) {
         if (-not (Test-Path 'node_modules')) { npm install; if ($LASTEXITCODE) { throw 'npm install failed' } }
         npx tauri build --no-bundle
         if ($LASTEXITCODE) { throw 'tauri build failed' }
-    } finally { Pop-Location }
+    } finally {
+        Pop-Location
+        # leave no private files behind: tests expect the fictional season
+        foreach ($dir in $localData, $localFiles, (Join-Path $webUi 'dist\local')) { if (Test-Path $dir) { Remove-Item $dir -Recurse -Force } }
+    }
 }
 if (-not (Test-Path $built)) { throw "No build found at $built" }
 
