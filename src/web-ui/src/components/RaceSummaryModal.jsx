@@ -15,7 +15,7 @@ const RaceSummaryModal = ({ isOpen, onClose, onRestart, restartLabel = 'NEW RACE
           {snap.fastest && <> Fastest lap {formatLap(snap.fastest.time)}.</>}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-line bg-ink/70 p-3">
-          <table className="w-full font-mono text-xs" data-testid="classification">
+          <table className="z-rows w-full font-mono text-xs" data-testid="classification">
             <tbody>
               {snap.rows.map((r) => (
                 <tr key={r.id} className={`border-t border-slate-800 ${r.isPlayer ? 'text-sky-300' : 'text-cream/75'}`}>

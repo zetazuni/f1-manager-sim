@@ -15,7 +15,7 @@ const TimingTower = ({ snap, focusId, onFocus }) => (
         </p>
       )}
     </div>
-    <table className="w-full border-collapse font-mono text-xs" data-testid="tower">
+    <table className="z-rows w-full border-collapse font-mono text-xs" data-testid="tower">
       <thead>
         <tr className="label text-left">
           <th className="py-1 pr-2">Pos</th>

@@ -29,7 +29,7 @@ const StandingsView = ({ table, teamsTable, roundsDone, total }) => (
         <h3 className="panel-title">Drivers championship</h3>
         <span className="label">after {roundsDone} of {total} rounds</span>
       </div>
-      <table className="w-full text-sm" data-testid="driver-standings">
+      <table className="z-rows w-full text-sm" data-testid="driver-standings">
         <thead>
           <tr className="label text-left"><th className="pb-1 pr-3 text-right">Pos</th><th className="pb-1">Driver</th><th className="pb-1 pr-3 text-right">Wins</th><th className="pb-1 text-right">Points</th></tr>
         </thead>
@@ -45,7 +45,7 @@ const StandingsView = ({ table, teamsTable, roundsDone, total }) => (
         <h3 className="panel-title">Constructors championship</h3>
         <span className="label">2 cars score</span>
       </div>
-      <table className="w-full text-sm" data-testid="team-standings">
+      <table className="z-rows w-full text-sm" data-testid="team-standings">
         <thead>
           <tr className="label text-left"><th className="pb-1 pr-3 text-right">Pos</th><th className="pb-1">Team</th><th className="pb-1 pr-3 text-right">Wins</th><th className="pb-1 text-right">Points</th></tr>
         </thead>

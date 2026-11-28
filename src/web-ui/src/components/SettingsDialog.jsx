@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isDesktop, quitGame, toggleFullscreen } from '../services/desktop';
 
 const Choice = ({ label, value, options, onChange, testId }) => (
   <div>
@@ -50,6 +51,15 @@ const SettingsDialog = ({ open, settings, onChange, onClose, onResetCareer }) =>
           onChange={set('speed')}
           options={[{ value: 1, label: '1x' }, { value: 2, label: '2x' }, { value: 4, label: '4x' }]}
         />
+        {isDesktop && (
+          <div>
+            <p className="label mb-2">Window (F11 for fullscreen, Esc to leave it)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn btn-ghost" onClick={toggleFullscreen}>Fullscreen on / off</button>
+              <button type="button" className="btn btn-ghost" onClick={quitGame}>Quit game</button>
+            </div>
+          </div>
+        )}
         <div className="rounded-lg border border-line bg-ink/60 p-4">
           <p className="label">Career</p>
           <p className="mt-1 text-sm text-cream/75">
