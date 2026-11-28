@@ -124,7 +124,7 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 
 ## M13 One-click desktop app (2026-11-28)
 
-- Tauri 2 wrapper (`src/web-ui/src-tauri`): the game runs in its own window, maximised, with an app icon (`tools/make-icon.py`).
+- Tauri 2 wrapper (`src/web-ui/src-tauri`): the game runs in its own window, maximised, with an app icon.
 - Splash screen while the 3D engine loads (`public/splash.html`); the game closes it once its first screen is ready, with a 10 s fallback.
 - `tools/install-desktop.ps1` builds the exe, copies it to `Zetrace App` and adds desktop and Start menu shortcuts.
 - Desktop saves are separate from browser saves (different web origin).
@@ -153,6 +153,11 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 
 - Cars: bargeboards, mirrors, wishbones, wing elements, rain light, sidewall rings and rims.
 - Trackside (`game/details.js`): rubbered line, tyre walls, gravel traps, braking boards, catch fence, marshal posts, pit crews, team trucks, a big screen and lettered sponsor boards.
+
+## M19 New emblem (2026-11-28)
+
+- A racing-shield Z with rev ticks, speed lines and a chequered fragment (`public/logo.svg`, small version `public/favicon.svg`).
+- Used on the title screen, header, splash and app icon (`npx tauri icon src-tauri/app-icon.png`).
 
 ## Ideas for later
 

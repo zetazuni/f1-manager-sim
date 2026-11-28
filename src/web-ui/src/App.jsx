@@ -15,6 +15,7 @@ import { teamsForSeason, startOffSeason, signDriver, finishOffSeason } from './g
 import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from './game/storage';
 import { setSoundEnabled } from './services/AudioManager';
 import { setMusicLevel } from './services/MusicPlayer';
+import Logo from './components/Logo';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -172,7 +173,7 @@ function App() {
       <header className="sticky top-0 z-header border-b border-line bg-ink/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-x-6 px-4">
           <div className="flex items-center gap-3 py-3">
-            <span className="lamp-glow grid h-9 w-9 place-items-center rounded-xl bg-f1-red font-display text-xl font-bold">Z</span>
+            <Logo className="h-11 w-11 drop-shadow-[0_0_14px_rgba(225,6,0,0.55)]" />
             <div className="leading-none">
               <p className="display text-2xl leading-none text-cream">Zetrace</p>
               <p className="text-[11px] text-muted/80">F1 manager</p>
