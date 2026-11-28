@@ -6,6 +6,7 @@ import * as pc from 'playcanvas';
 import { materialCache } from './meshBuilder';
 import { buildCar } from './scene';
 import { walker, worker, cheerer, person } from './hqKit';
+import { inkOn } from './liveries';
 
 const W = 30;
 const D = 24;
@@ -26,7 +27,7 @@ function shell(g, ctx, { title, floor = '#7d838c' }) {
   // lettering sits on a fascia above anything standing on the floor
   g.box(0, 4.95, back + 0.36, W, 1.1, 0.1, '#f8fafc');
   g.sign(name, -6.5, 4.95, back + 0.43, 12, 0.95, '#111827');
-  g.sign(title, 8, 4.95, back + 0.43, 9, 0.75, color === '#e8e8e8' ? '#111827' : color);
+  g.sign(title, 8, 4.95, back + 0.43, 9, 0.75, inkOn(color) === '#0b0f19' ? '#111827' : color); // light team colours would vanish on white
   g.box(-13.3, 3.5, back + 0.24, 0.5, 1.2, 0.06, accent, [0, 0, -24]);
 
   g.box(0, 4.9, back - 1.7, W, 0.3, 4, '#dfe3e8'); // mezzanine slab
