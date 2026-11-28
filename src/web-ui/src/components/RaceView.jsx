@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pc from 'playcanvas';
+import { addReflections } from '../game/stage';
 import { makeTrackPath } from '../game/trackPath';
 import { buildCircuit, buildCar, buildSafetyCar, buildRain, clearMaterialCache, clearCarMeshCache } from '../game/scene';
 import { ENVIRONMENTS } from '../game/environments';
@@ -102,6 +103,10 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     const reach = Math.max(1, Math.max(span('x'), span('z')) / 130);
     if (app.scene.fog && typeof app.scene.fog === 'object') { app.scene.fog.start = 230 * reach; app.scene.fog.end = 420 * reach; }
     const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3, pitSide: track?.pitSide });
+
+    addReflections(app, circuit, theme.sky, quality);
+    sun.light.shadowDistance = 420 * reach;
+    if (quality === 'high') sun.light.shadowType = pc.SHADOW_PCF5_32F;
 
     // Weather: rain streaks, dimmer greyer light, glossy wet asphalt
     const rain = buildRain(app);

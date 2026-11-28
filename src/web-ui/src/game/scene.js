@@ -233,6 +233,14 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
   const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
+  // mown bands in the grass beside the run-off
+  if (env !== 'city' && env !== 'night' && env !== 'desert') {
+    const band = (i) => Math.floor(i / 4) % 2 === 0;
+    const mown = material(theme.ground2, { gloss: 0.05, twoSided: true });
+    meshEntity(root, ribbon(device, path, half + 3, half + 8, 0.006, band), mown, 'mown-l');
+    meshEntity(root, ribbon(device, path, -half - 8, -half - 3, 0.006, band), mown, 'mown-r');
+  }
+
   // rubber laid down along the middle of the road
   meshEntity(root, ribbon(device, path, -1.3, -0.35, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-l');
   meshEntity(root, ribbon(device, path, 0.35, 1.3, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-r');
@@ -270,8 +278,15 @@ export function buildCar(app, color, accent = '#111827') {
     mb.box({ pos: [0, 0.2, -0.1], scale: [1.55, 0.08, 4.0], color: dark });
     // monocoque, nose tapering in three steps
     mb.box({ pos: [0, 0.48, 0.1], scale: [0.72, 0.46, 2.4], color: body });
-    mb.box({ pos: [0, 0.42, 1.55], scale: [0.5, 0.32, 0.8], color: body });
-    mb.box({ pos: [0, 0.34, 2.15], scale: [0.34, 0.2, 0.6], color: body, rot: [-5, 0, 0] });
+    // rounded nose tapering to the tip, over a flat underside
+    for (let i = 0; i < 16; i++) {
+      const t = i / 15;
+      mb.prism({ pos: [0, 0.44 - t * 0.14, 1.3 + t * 1.3], radius: 0.25 - t * 0.17, height: 0.1, sides: 14, color: body, rot: [90, 0, 0] });
+    }
+    mb.box({ pos: [0, 0.3, 1.8], scale: [0.3, 0.06, 1.3], color: dark });
+    mb.prism({ pos: [0, 0.76, -0.55], radius: 0.2, height: 0.7, sides: 14, color: body, rot: [90, 0, 0] });
+    mb.prism({ pos: [0, 0.72, -1.2], radius: 0.16, height: 0.7, sides: 14, color: body, rot: [90, 0, 0] });
+    for (const sx of [1, -1]) mb.prism({ pos: [0.78 * sx, 0.42, -0.2], radius: 0.16, height: 1.45, sides: 12, color: body, rot: [90, 0, 0] });
     // plank, bargeboards, mirrors and T-camera
     mb.box({ pos: [0, 0.13, -0.1], scale: [0.4, 0.05, 3.6], color: '#8b5a2b' });
     for (const sx of [1, -1]) {
@@ -306,8 +321,14 @@ export function buildCar(app, color, accent = '#111827') {
     mb.box({ pos: [0, 0.99, -0.2], scale: [0.3, 0.3, 0.42], color: dark });
     // cockpit, helmet, halo
     mb.box({ pos: [0, 0.73, 0.5], scale: [0.46, 0.1, 0.65], color: dark });
-    mb.box({ pos: [0, 0.8, 0.35], scale: [0.24, 0.22, 0.24], color: '#f8fafc' });
-    mb.box({ pos: [0, 0.98, 0.55], scale: [0.5, 0.05, 0.62], color: trim });
+    mb.prism({ pos: [0, 0.82, 0.35], radius: 0.14, height: 0.18, sides: 14, color: '#f8fafc' });
+    mb.prism({ pos: [0, 0.92, 0.35], radius: 0.1, height: 0.06, sides: 14, color: trim });
+    mb.box({ pos: [0, 0.84, 0.47], scale: [0.2, 0.07, 0.05], color: '#0b1220' });
+    // halo: a curved hoop made of short segments
+    for (let i = 0; i <= 10; i++) {
+      const a = (i / 10) * Math.PI;
+      mb.box({ pos: [Math.cos(a) * 0.27, 0.99, 0.35 + Math.sin(a) * 0.5], scale: [0.07, 0.06, 0.18], rot: [0, (-a * 180) / Math.PI, 0], color: trim });
+    }
     mb.box({ pos: [0, 0.86, 0.86], scale: [0.05, 0.2, 0.05], color: trim });
     // front wing: main plane, flap, endplates
     mb.box({ pos: [0, 0.16, 2.55], scale: [1.95, 0.05, 0.45], color: trim });
@@ -321,12 +342,13 @@ export function buildCar(app, color, accent = '#111827') {
     mb.box({ pos: [0, 0.4, -2.12], scale: [1.0, 0.18, 0.3], color: dark });
     // wheels: 10-sided tyres on their side, grey rim centres
     for (const [x, z, w] of [[0.98, 1.45, 0.36], [-0.98, 1.45, 0.36], [1.0, -1.35, 0.46], [-1.0, -1.35, 0.46]]) {
-      mb.prism({ pos: [x, 0.36, z], radius: 0.36, height: w, sides: 10, color: tyre, rot: [0, 0, 90] });
+      mb.prism({ pos: [x, 0.36, z], radius: 0.36, height: w, sides: 18, color: tyre, rot: [0, 0, 90] });
+      mb.prism({ pos: [x, 0.36, z], radius: 0.34, height: w + 0.05, sides: 18, color: '#1d1f23', rot: [0, 0, 90] });
       // sidewall ring, rim and wheel nut
       const face = x + Math.sign(x) * (w / 2);
-      mb.prism({ pos: [face + Math.sign(x) * 0.004, 0.36, z], radius: 0.28, height: 0.01, sides: 10, color: '#facc15', rot: [0, 0, 90] });
-      mb.prism({ pos: [face + Math.sign(x) * 0.01, 0.36, z], radius: 0.235, height: 0.012, sides: 10, color: tyre, rot: [0, 0, 90] });
-      mb.prism({ pos: [face + Math.sign(x) * 0.018, 0.36, z], radius: 0.17, height: 0.014, sides: 10, color: '#9ca3af', rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.004, 0.36, z], radius: 0.28, height: 0.01, sides: 18, color: '#facc15', rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.01, 0.36, z], radius: 0.235, height: 0.012, sides: 18, color: tyre, rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.018, 0.36, z], radius: 0.17, height: 0.014, sides: 18, color: '#9ca3af', rot: [0, 0, 90] });
       mb.prism({ pos: [face + Math.sign(x) * 0.03, 0.36, z], radius: 0.05, height: 0.02, sides: 6, color: trim, rot: [0, 0, 90] });
     }
     mesh = mb.build(app.graphicsDevice);
@@ -356,7 +378,7 @@ export function buildSafetyCar(app) {
     mb.box({ pos: [0, 0.62, 2.21], scale: [1.6, 0.25, 0.05], color: '#f59e0b' });
     mb.box({ pos: [0, 0.3, 0], scale: [1.95, 0.15, 4.45], color: '#16a34a' });
     for (const [x, z] of [[0.95, 1.4], [-0.95, 1.4], [0.95, -1.4], [-0.95, -1.4]]) {
-      mb.prism({ pos: [x, 0.35, z], radius: 0.35, height: 0.3, sides: 10, color: '#16171a', rot: [0, 0, 90] });
+      mb.prism({ pos: [x, 0.35, z], radius: 0.35, height: 0.3, sides: 16, color: '#16171a', rot: [0, 0, 90] });
     }
     safetyCarMesh = mb.build(app.graphicsDevice);
   }

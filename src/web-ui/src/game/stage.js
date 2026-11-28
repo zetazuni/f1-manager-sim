@@ -3,6 +3,7 @@
 
 import * as pc from 'playcanvas';
 import { clearMaterialCache } from './scene';
+import { useMaterials, vertexColorMaterial } from './meshBuilder';
 
 export const colour = (hex, k = 1) => {
   const c = new pc.Color();
@@ -45,6 +46,19 @@ export function skyCubemap(device, sky = '#9cc3e6', floor = '#2b2f36') {
   const tex = new pc.Texture(device, { width: size, height: size, cubemap: true, mipmaps: true });
   tex.setSource([face('side'), face('side'), face('up'), face('down'), face('side'), face('side')]);
   return tex;
+}
+
+/** Reflections for paint and the road. High quality only. */
+export function addReflections(app, circuit, sky, quality) {
+  if (quality !== 'high') return;
+  useMaterials(app.graphicsDevice);
+  const map = skyCubemap(app.graphicsDevice, sky);
+  const asphalt = circuit?.findByName('asphalt')?.render?.meshInstances?.[0]?.material;
+  for (const m of [vertexColorMaterial(true), asphalt]) {
+    if (!m) continue;
+    m.cubeMap = map;
+    m.update();
+  }
 }
 
 export function createStage(canvas, { quality = 'high', sky = '#1a1430', ambient = '#8f86ab', ambientLevel = 0.9, sun = { color: '#ffe6c4', intensity: 1.3, pitch: 48, yaw: 30 }, shadowDistance = 200, farClip = 800 } = {}) {

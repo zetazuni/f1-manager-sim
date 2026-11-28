@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import TrackMap from './TrackMap';
-import { createStage, reducedMotion } from '../game/stage';
+import { addReflections, createStage, reducedMotion } from '../game/stage';
 import { buildCircuit } from '../game/scene';
 import { makeTrackPath } from '../game/trackPath';
 import { ENVIRONMENTS } from '../game/environments';
@@ -30,7 +30,8 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
       return undefined;
     }
     const path = makeTrackPath(track.points);
-    buildCircuit(stage.app, path, { teams, env: track.env, seed: track.id.length * 7 + 3, pitSide: track.pitSide });
+    const circuit = buildCircuit(stage.app, path, { teams, env: track.env, seed: track.id.length * 7 + 3, pitSide: track.pitSide });
+    addReflections(stage.app, circuit, theme.sky, quality);
     const xs = path.points.map((p) => p.x);
     const zs = path.points.map((p) => p.z);
     const mid = [(Math.min(...xs) + Math.max(...xs)) / 2, 0, (Math.min(...zs) + Math.max(...zs)) / 2];
@@ -52,8 +53,8 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
       } else if (mode === 'top') {
         stage.look([mid[0], radius * 2.9, mid[2] + 1], mid, 42);
       } else {
-        const d = radius * 1.75;
-        stage.look([mid[0] + Math.cos(angle) * d, radius * 1.05, mid[2] + Math.sin(angle) * d], [mid[0], -radius * 0.12, mid[2]], 40);
+        const d = radius * 2.05;
+        stage.look([mid[0] + Math.cos(angle) * d, radius * 1.3, mid[2] + Math.sin(angle) * d], [mid[0], -radius * 0.12, mid[2]], 40);
       }
     });
     window.__zetracePreview = () => ({ track: track.id, view: viewRef.current }); // read-only test hook

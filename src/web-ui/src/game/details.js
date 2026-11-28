@@ -41,6 +41,52 @@ const person = (mb, x, z, color) => {
   mb.box({ pos: [x, 0.85, z], scale: [0.26, 0.26, 0.26], color: '#f8fafc' });
 };
 
+const CROWD = ['#f43f5e', '#f59e0b', '#22d3ee', '#a3e635', '#e2e8f0', '#818cf8', '#fb7185', '#facc15', '#38bdf8'];
+
+/** A stepped stand with crowd, roof and flags, following the road from f0 for `length`. */
+function cornerStand(mb, path, f0, side, length, rows = 5) {
+  const seg = 2.4;
+  for (let d = 0; d < length; d += seg) {
+    const f = f0 + d / path.total;
+    const base = path.pointAt(f, side * (HALF + 9));
+    const back = path.pointAt(f, side * (HALF + 9 + rows * 1.2));
+    // skip pieces that would sit on another part of the lap
+    if (clearance(path, back.x, back.z) < HALF + 6 || clearance(path, base.x, base.z) < HALF + 6) continue;
+    const rot = [0, base.heading, 0];
+    for (let r = 0; r < rows; r++) {
+      const p = path.pointAt(f, side * (HALF + 9 + r * 1.2));
+      const h = 0.9 + r * 0.75;
+      mb.box({ pos: [p.x, h / 2, p.z], scale: [1.25, h, seg * 1.04], rot, color: r % 2 ? '#334155' : '#475569' });
+      for (let k = 0; k < 3; k++) {
+        const q = path.pointAt(f + ((k - 1) * 0.75) / path.total, side * (HALF + 9 + r * 1.2));
+        const c = CROWD[Math.abs(Math.floor(q.x * 7 + q.z * 13 + r * 3 + k)) % CROWD.length];
+        mb.box({ pos: [q.x, h + 0.22, q.z], scale: [0.42, 0.44, 0.42], rot, color: c });
+        mb.box({ pos: [q.x, h + 0.56, q.z], scale: [0.22, 0.22, 0.22], rot, color: '#e7c6a5' });
+      }
+    }
+    const roof = path.pointAt(f, side * (HALF + 9 + rows * 0.6));
+    mb.box({ pos: [roof.x, rows * 0.75 + 2.9, roof.z], scale: [rows * 1.2 + 1.2, 0.18, seg * 1.04], rot, color: '#e2e8f0' });
+    mb.box({ pos: [back.x, (rows * 0.75 + 2.9) / 2, back.z], scale: [0.22, rows * 0.75 + 2.9, 0.22], color: '#94a3b8' });
+    if (Math.round(d / seg) % 3 === 0) {
+      mb.box({ pos: [back.x, rows * 0.75 + 4, back.z], scale: [0.08, 2.2, 0.08], color: '#cbd5e1' });
+      mb.box({ pos: [back.x, rows * 0.75 + 4.7, back.z], scale: [0.06, 0.7, 1.2], rot, color: CROWD[Math.floor(d) % CROWD.length] });
+    }
+  }
+}
+
+/** Footbridge over the road. */
+function footbridge(mb, path, f, color) {
+  const c = path.pointAt(f);
+  const rot = [0, c.heading, 0];
+  for (const side of [1, -1]) {
+    const leg = path.pointAt(f, side * (HALF + 2.4));
+    if (clearance(path, leg.x, leg.z) < HALF + 1.5) return;
+    mb.box({ pos: [leg.x, 3.4, leg.z], scale: [0.7, 6.8, 1.4], rot, color: '#64748b' });
+  }
+  mb.box({ pos: [c.x, 7, c.z], scale: [HALF * 2 + 6, 0.5, 2], rot, color: '#cbd5e1' });
+  mb.box({ pos: [c.x, 8, c.z], scale: [HALF * 2 + 6, 1.5, 0.2], rot, color });
+}
+
 export function trackside(mb, path, { teams = [], pit, grass = true }) {
   const at = (f, lateral) => path.pointAt(f, lateral);
   const away = (p) => clearance(path, p.x, p.z);
@@ -70,6 +116,22 @@ export function trackside(mb, path, { teams = [], pit, grass = true }) {
         mb.box({ pos: [p.x + Math.cos(rad) * off, 1.45, p.z - Math.sin(rad) * off], scale: [0.14, 0.5, 0.16], rot: [0, p.heading, 0], color: '#111827' });
       }
     }
+  }
+
+  // grandstands outside the big corners, spread round the lap
+  const stands = corners(path, 0.06).filter((c) => c.f > 0.2 && c.f < 0.95);
+  const step = Math.max(1, Math.floor(stands.length / 5));
+  stands.filter((_, i) => i % step === 0).slice(0, 6).forEach((c) => cornerStand(mb, path, c.f - 8 / path.total, c.outside, 17));
+
+  // two footbridges and a ring of floodlight poles
+  footbridge(mb, path, 0.47, '#e10600');
+  footbridge(mb, path, 0.78, '#0ea5e9');
+  for (let i = 0; i < 16; i++) {
+    const f = (i + 0.5) / 16;
+    const q = path.pointAt(f, (i % 2 ? 1 : -1) * (HALF + 8.5));
+    if (f < 0.2 || clearance(path, q.x, q.z) < HALF + 6) continue;
+    mb.box({ pos: [q.x, 4.5, q.z], scale: [0.22, 9, 0.22], color: '#94a3b8' });
+    mb.box({ pos: [q.x, 9.1, q.z], scale: [1.4, 0.35, 0.5], rot: [0, q.heading, 0], color: '#f8fafc' });
   }
 
   // catch fence behind the grandstand side of the main straight

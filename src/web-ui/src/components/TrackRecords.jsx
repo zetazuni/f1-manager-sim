@@ -49,7 +49,7 @@ const TrackRecords = ({ trackId, career }) => {
       {past.length > 0 && (
         <div data-testid="real-history">
           <h3 className="panel-title mb-2">Real results</h3>
-          <table className="z-rows w-full text-sm">
+          <table className="z-rows w-full text-xs [&_td]:pr-3 [&_td]:align-top">
             <thead><tr className="label text-left"><th className="pb-1">Year</th><th className="pb-1">Winner</th><th className="pb-1">Pole</th><th className="pb-1">Fastest lap</th></tr></thead>
             <tbody>
               {past.map((h) => (

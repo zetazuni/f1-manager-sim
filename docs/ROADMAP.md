@@ -165,6 +165,12 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Weekend briefing: our drivers, title race, sponsor objective and records at this circuit.
 - Calendar cards open a track preview with records. Records are kept per circuit in the career; a season pack can add real past results (`TRACK_HISTORY`).
 
+## M21 Track and car detail (2026-11-28)
+
+- Corner grandstands with crowds, roofs and flags, mown grass bands, footbridges and floodlight poles.
+- Longer, softer shadows; painted-sky reflections on paint and asphalt (High quality only, not true mirrors).
+- Cars: rounder tyres, tapered nose, rounded engine cover and sidepods, helmet visor and curved halo.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.
