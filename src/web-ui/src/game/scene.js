@@ -3,6 +3,7 @@ import { pitLayout } from './trackPath';
 import { GRID_SLOT_UNITS } from './raceSim';
 import { MeshBuilder, vertexColorMaterial, glowMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
+import { trackside, sponsorBoards } from './details';
 
 export const TRACK_WIDTH = 7;
 
@@ -232,6 +233,12 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
   const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
+  // rubber laid down along the middle of the road
+  meshEntity(root, ribbon(device, path, -1.3, -0.35, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-l');
+  meshEntity(root, ribbon(device, path, 0.35, 1.3, 0.034), material('#25282f', { gloss: 0.4, twoSided: true }), 'rubber-r');
+  // barriers, boards, marshals, pit crews and trucks
+  trackside(mb, path, { teams, pit, grass: env !== 'city' && env !== 'night' });
+  sponsorBoards(app, root, path, teams, s);
   // Grandstands, walls, trees, buildings, water, lights: depends on the circuit
   buildEnvironment(mb, glow, path, env, seed, s);
 
@@ -264,6 +271,28 @@ export function buildCar(app, color, accent = '#111827') {
     mb.box({ pos: [0, 0.48, 0.1], scale: [0.72, 0.46, 2.4], color: body });
     mb.box({ pos: [0, 0.42, 1.55], scale: [0.5, 0.32, 0.8], color: body });
     mb.box({ pos: [0, 0.34, 2.15], scale: [0.34, 0.2, 0.6], color: body, rot: [-5, 0, 0] });
+    // plank, bargeboards, mirrors and T-camera
+    mb.box({ pos: [0, 0.13, -0.1], scale: [0.4, 0.05, 3.6], color: '#8b5a2b' });
+    for (const sx of [1, -1]) {
+      mb.box({ pos: [0.52 * sx, 0.36, 1.0], scale: [0.04, 0.3, 0.5], color: dark, rot: [0, 14 * sx, 0] });
+      mb.box({ pos: [0.78 * sx, 0.27, 0.45], scale: [0.05, 0.14, 0.7], color: trim });
+      mb.box({ pos: [0.52 * sx, 0.78, 0.82], scale: [0.2, 0.1, 0.07], color: body });
+      mb.box({ pos: [0.42 * sx, 0.72, 0.82], scale: [0.14, 0.03, 0.03], color: dark });
+      // wishbones out to each wheel, front and rear
+      for (const [z, y] of [[1.45, 0.52], [1.45, 0.26], [-1.35, 0.54], [-1.35, 0.28]]) {
+        mb.box({ pos: [0.56 * sx, y, z + 0.14], scale: [0.6, 0.04, 0.05], color: dark, rot: [0, 16 * sx, 0] });
+        mb.box({ pos: [0.56 * sx, y, z - 0.14], scale: [0.6, 0.04, 0.05], color: dark, rot: [0, -16 * sx, 0] });
+      }
+      // front wing outer elements and strakes
+      mb.box({ pos: [0.72 * sx, 0.3, 2.34], scale: [0.5, 0.03, 0.16], color: trim, rot: [-18, 0, 0] });
+      mb.box({ pos: [0.7 * sx, 0.2, 2.62], scale: [0.03, 0.1, 0.3], color: dark });
+      // nose pylons
+      mb.box({ pos: [0.12 * sx, 0.23, 2.4], scale: [0.04, 0.14, 0.18], color: dark });
+    }
+    mb.box({ pos: [0, 1.2, -0.2], scale: [0.2, 0.08, 0.12], color: '#facc15' });
+    // rain light and exhaust
+    mb.box({ pos: [0, 0.46, -2.29], scale: [0.14, 0.16, 0.05], color: '#ef4444' });
+    mb.prism({ pos: [0, 0.66, -1.72], radius: 0.1, height: 0.24, sides: 8, color: '#6b7280', rot: [90, 0, 0] });
     // sidepods with livery stripe and radiator inlets
     for (const sx of [1, -1]) {
       mb.box({ pos: [0.62 * sx, 0.42, -0.25], scale: [0.5, 0.36, 1.6], color: body });
@@ -292,7 +321,12 @@ export function buildCar(app, color, accent = '#111827') {
     // wheels: 10-sided tyres on their side, grey rim centres
     for (const [x, z, w] of [[0.98, 1.45, 0.36], [-0.98, 1.45, 0.36], [1.0, -1.35, 0.46], [-1.0, -1.35, 0.46]]) {
       mb.prism({ pos: [x, 0.36, z], radius: 0.36, height: w, sides: 10, color: tyre, rot: [0, 0, 90] });
-      mb.prism({ pos: [x + Math.sign(x) * (w / 2 + 0.005), 0.36, z], radius: 0.17, height: 0.02, sides: 10, color: '#9ca3af', rot: [0, 0, 90] });
+      // sidewall ring, rim and wheel nut
+      const face = x + Math.sign(x) * (w / 2);
+      mb.prism({ pos: [face + Math.sign(x) * 0.004, 0.36, z], radius: 0.28, height: 0.01, sides: 10, color: '#facc15', rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.01, 0.36, z], radius: 0.235, height: 0.012, sides: 10, color: tyre, rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.018, 0.36, z], radius: 0.17, height: 0.014, sides: 10, color: '#9ca3af', rot: [0, 0, 90] });
+      mb.prism({ pos: [face + Math.sign(x) * 0.03, 0.36, z], radius: 0.05, height: 0.02, sides: 6, color: trim, rot: [0, 0, 90] });
     }
     mesh = mb.build(app.graphicsDevice);
     carMeshCache.set(key, mesh);

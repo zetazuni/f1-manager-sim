@@ -149,6 +149,11 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Three original lofi loops made in code (`services/MusicPlayer.js`), 32 bars each, starting on the first click.
 - Settings: Normal, Low or Off, separate from sound effects.
 
+## M18 3D detail (2026-11-28)
+
+- Cars: bargeboards, mirrors, wishbones, wing elements, rain light, sidewall rings and rims.
+- Trackside (`game/details.js`): rubbered line, tyre walls, gravel traps, braking boards, catch fence, marshal posts, pit crews, team trucks, a big screen and lettered sponsor boards.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.
