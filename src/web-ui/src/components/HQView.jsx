@@ -94,7 +94,9 @@ const HQView = ({ team, state, room, onRoom, quality = 'high' }) => {
         at[i] += (want.at[i] - at[i]) * k;
       }
       fov += (want.fov - fov) * k;
-      stage.look(pos, at, fov);
+      // test hook: look straight down on the campus drive
+      if (window.__zetraceHQTop) stage.look([-2, 120, 37], [-2, 0, 36], 40);
+      else stage.look(pos, at, fov);
     });
     window.__zetraceHQ = () => ({ room: current, asked: roomRef.current, camera: pos.map((v) => Math.round(v)), visible: hq.visible() }); // read-only test hook
     return () => {

@@ -194,6 +194,10 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Nine departments (`game/hqRooms.js`), new: atrium, race bay and race simulator. Glass walls, upper office floor, side walkways, slatted ceiling.
 - Only the department in view is switched on. Walking, working and cheering people; moving simulator platform with a live road screen.
 
+## M26 Campus roundabout (2026-11-28)
+
+- Road and footpath layout moved to `game/hqLayout.js`; footpaths no longer touch any road and walkers keep to them (`tools/validate-campus.mjs`).
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

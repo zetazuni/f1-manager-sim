@@ -35,6 +35,8 @@ const CHECKS = [
 const results = [];
 const tracks = spawnSync(process.execPath, [path.join(here, 'validate-tracks.mjs')], { encoding: 'utf8' });
 results.push(['validate-tracks', tracks.status === 0, tracks.status === 0 ? '6 layouts OK' : tracks.stdout.trim()]);
+const campus = spawnSync(process.execPath, [path.join(here, 'validate-campus.mjs')], { encoding: 'utf8' });
+results.push(['validate-campus', campus.status === 0, campus.stdout.trim().slice(6)]);
 
 const only = process.argv[4] ? process.argv[4].split(',') : null;
 for (const [name, query] of CHECKS) {

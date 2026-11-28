@@ -3,6 +3,7 @@
 // car parks, walkways and woodland.
 
 import { createGroup, walker } from './hqKit';
+import { ROADS, ROAD_WIDTH, ROUNDABOUT, WALKS, WALK_WIDTH, onRoad, onWalk } from './hqLayout';
 
 const ring = (cx, cz, rx, rz, n = 72, from = 0, to = Math.PI * 2) => Array.from({ length: n }, (_, i) => {
   const a = from + ((to - from) * i) / (to - from >= Math.PI * 2 - 1e-6 ? n : n - 1);
@@ -28,6 +29,7 @@ const random = () => {
 };
 
 function tree(g, x, z, s = 1) {
+  if (onRoad(x, z, 1.2 * s) || onWalk(x, z, 0.9 * s)) return; // nothing grows on roads or paths
   const greens = ['#2f6b34', '#3b7f3c', '#255a2e', '#4a8c3f'];
   const c = greens[Math.floor(random() * greens.length)];
   g.cyl(x, 0.6 * s, z, 0.16 * s, 1.2 * s, '#5b4027', [0, 0, 0], 7);
@@ -106,21 +108,22 @@ export function buildCampus(app, { sky, color, accent, name }) {
     g.cyl(x, 1.8, -14, 0.3, 3.6, '#aab2bb');
   }
 
-  // roundabout, drive and forecourt
-  mb.slab({ points: ring(-2, 36, 24, 18), y0: 0, y1: 0.12, color: '#4b4f57' });
-  mb.slab({ points: ring(-2, 36, 17, 12), y0: 0.12, y1: 0.24, color: '#5d8c40' });
-  mb.slab({ points: ring(-2, 36, 8, 6), y0: 0.24, y1: 0.8, color: '#c9ced4' });
-  gloss.slab({ points: ring(-2, 36, 6.6, 4.8), y0: 0.8, y1: 0.95, color: '#37566e' });
-  const road = (x1, z1, x2, z2, w = 6) => {
+  // roundabout and drives (layout in hqLayout.js)
+  const { x: rx, z: rz, outer, inner } = ROUNDABOUT;
+  mb.slab({ points: ring(rx, rz, outer[0], outer[1]), y0: 0, y1: 0.12, color: '#4b4f57' });
+  mb.slab({ points: ring(rx, rz, inner[0], inner[1]), y0: 0.12, y1: 0.24, color: '#5d8c40' });
+  mb.slab({ points: ring(rx, rz, 8, 6), y0: 0.24, y1: 0.8, color: '#c9ced4' });
+  gloss.slab({ points: ring(rx, rz, 6.6, 4.8), y0: 0.8, y1: 0.95, color: '#37566e' });
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    g.box(rx + Math.cos(a) * ((outer[0] + inner[0]) / 2), 0.17, rz + Math.sin(a) * ((outer[1] + inner[1]) / 2), 0.2, 0.02, 1.6, '#e5e7eb', [0, (Math.atan2(-Math.sin(a) * outer[0], Math.cos(a) * outer[1]) * 180) / Math.PI, 0]);
+  }
+  for (const [x1, z1, x2, z2] of ROADS) {
     const len = Math.hypot(x2 - x1, z2 - z1);
     const yaw = (Math.atan2(x2 - x1, z2 - z1) * 180) / Math.PI;
-    g.box((x1 + x2) / 2, 0.11, (z1 + z2) / 2, w, 0.06, len + w * 0.4, '#4b4f57', [0, yaw, 0]);
-    for (let d = 3; d < len; d += 6) g.box(x1 + ((x2 - x1) * d) / len, 0.17, z1 + ((z2 - z1) * d) / len, 0.2, 0.02, 2, '#e5e7eb', [0, yaw, 0]);
-  };
-  road(-120, 76, -62, 56);
-  road(-62, 56, -24, 40);
-  road(20, 34, 40, 22);
-  road(-14, 22, -34, 10);
+    g.box((x1 + x2) / 2, 0.11, (z1 + z2) / 2, ROAD_WIDTH, 0.06, len + ROAD_WIDTH * 0.4, '#4b4f57', [0, yaw, 0]);
+    for (let d = 3; d < len - 2; d += 6) g.box(x1 + ((x2 - x1) * d) / len, 0.17, z1 + ((z2 - z1) * d) / len, 0.2, 0.02, 2, '#e5e7eb', [0, yaw, 0]);
+  }
 
   // car parks with hedges, trees and cars
   const paint = ['#e11d48', '#2563eb', '#f8fafc', '#111827', '#9ca3af', '#f59e0b', color];
@@ -143,19 +146,16 @@ export function buildCampus(app, { sky, color, accent, name }) {
   park(44, 44, 14, 4);
   park(-62, 24, 15, 3);
 
-  // walkways with lamp posts, linking everything
-  const walks = [
-    [[40, 19], [40, 26], [14, 26], [14, 52], [-20, 52], [-20, 22], [-40, 8], [-52, 6], [-30, 6], [-4, 18], [20, 22]],
-    [[-8, -6], [-8, -34], [8, -36], [36, -44], [60, -50], [82, -36], [84, -14], [82, 12], [60, 20], [30, 20], [6, 8]],
-  ];
-  walks.forEach((path) => path.forEach((p, i) => {
-    const q = path[(i + 1) % path.length];
+  // footpaths with lamp posts beside them
+  WALKS.forEach((path) => path.slice(1).forEach((q, i) => {
+    const p = path[i];
     const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
     const yaw = (Math.atan2(q[0] - p[0], q[1] - p[1]) * 180) / Math.PI;
-    g.box((p[0] + q[0]) / 2, 0.18, (p[1] + q[1]) / 2, 2.4, 0.08, len + 2, '#c8ccd2', [0, yaw, 0]);
-    for (let d = 4; d < len; d += 10) {
-      const x = p[0] + ((q[0] - p[0]) * d) / len + 1.6;
-      const z = p[1] + ((q[1] - p[1]) * d) / len + 1.6;
+    g.box((p[0] + q[0]) / 2, 0.18, (p[1] + q[1]) / 2, WALK_WIDTH, 0.08, len + WALK_WIDTH * 0.5, '#c8ccd2', [0, yaw, 0]);
+    for (let d = 2; d < len; d += 10) {
+      const x = p[0] + ((q[0] - p[0]) * d) / len + ((q[1] - p[1]) / len) * 1.8;
+      const z = p[1] + ((q[1] - p[1]) * d) / len - ((q[0] - p[0]) / len) * 1.8;
+      if (onRoad(x, z, 0.6) || onWalk(x, z, 0.2)) continue;
       g.cyl(x, 1.4, z, 0.07, 2.8, '#64748b', [0, 0, 0], 6);
       g.lamp(x, 2.9, z, 0.35, 0.25, 0.35, '#fff1c2');
     }
@@ -181,8 +181,18 @@ export function buildCampus(app, { sky, color, accent, name }) {
   }
 
   // staff walking the paths and shuttles going round
-  for (let i = 0; i < 18; i++) {
-    walker(g, walks[i % 2], { y: 0.2, offset: i * 23, speed: 2.2 + (i % 3) * 0.4, shirt: i % 3 ? color : '#f1f5f9', seed: i });
+  // there and back along the same path, each way keeping to its own side
+  const loops = WALKS.map((path) => {
+    const side = (list) => list.map((p, i) => {
+      const a = list[Math.max(0, i - 1)];
+      const b = list[Math.min(list.length - 1, i + 1)];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return [p[0] - ((b[1] - a[1]) / len) * 0.55, p[1] + ((b[0] - a[0]) / len) * 0.55];
+    });
+    return [...side(path), ...side([...path].reverse())];
+  });
+  for (let i = 0; i < 20; i++) {
+    walker(g, loops[i % loops.length], { y: 0.2, offset: i * 23, speed: 2.2 + (i % 3) * 0.4, shirt: i % 3 ? color : '#f1f5f9', seed: i });
   }
   g.root.children.filter((c) => c.name === 'person').forEach((c) => c.setLocalScale(1.5, 1.5, 1.5));
   for (let k = 0; k < 3; k++) {
@@ -192,8 +202,10 @@ export function buildCampus(app, { sky, color, accent, name }) {
       for (const [x, z] of [[0.9, 1.4], [-0.9, 1.4], [0.9, -1.4], [-0.9, -1.4]]) m.prism({ pos: [x, 0.4, z], radius: 0.4, height: 0.3, sides: 14, color: '#111827', rot: [0, 0, 90] });
     }, 0, 0.1, 0, (e, t) => {
       const a = t * 0.35 + (k * Math.PI * 2) / 3;
-      e.setLocalPosition(-2 + Math.cos(a) * 20.5, 0.1, 36 + Math.sin(a) * 15);
-      e.setLocalEulerAngles(0, (Math.atan2(-Math.sin(a) * 20.5, Math.cos(a) * 15) * 180) / Math.PI, 0);
+      const mx = (outer[0] + inner[0]) / 2;
+      const mz = (outer[1] + inner[1]) / 2;
+      e.setLocalPosition(rx + Math.cos(a) * mx, 0.1, rz + Math.sin(a) * mz);
+      e.setLocalEulerAngles(0, (Math.atan2(-Math.sin(a) * mx, Math.cos(a) * mz) * 180) / Math.PI, 0);
     });
   }
   return g.finish();
