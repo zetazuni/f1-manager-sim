@@ -30,7 +30,7 @@ const CircuitView = ({ track, teams = [], quality = 'high', className = 'h-72 lg
       return undefined;
     }
     const path = makeTrackPath(track.points);
-    const circuit = buildCircuit(stage.app, path, { teams, env: track.env, seed: track.id.length * 7 + 3, pitSide: track.pitSide });
+    const circuit = buildCircuit(stage.app, path, { teams, env: track.env, seed: track.id.length * 7 + 3, pitSide: track.pitSide, landmarks: track.landmarks });
     addReflections(stage.app, circuit, theme.sky, quality);
     const xs = path.points.map((p) => p.x);
     const zs = path.points.map((p) => p.z);

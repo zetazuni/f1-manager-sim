@@ -9,6 +9,7 @@ export function createRegistry(path) {
   const cells = new Map();
   const items = [];
   let refused = 0;
+  let largest = 0; // the search must reach the biggest circle on record
 
   const road = (x, z) => {
     let best = Infinity;
@@ -21,8 +22,9 @@ export function createRegistry(path) {
 
   const near = (x, z, r) => {
     const found = new Set();
-    for (let i = Math.floor((x - r - CELL) / CELL); i <= Math.floor((x + r + CELL) / CELL); i++) {
-      for (let j = Math.floor((z - r - CELL) / CELL); j <= Math.floor((z + r + CELL) / CELL); j++) {
+    const reach = r + largest;
+    for (let i = Math.floor((x - reach) / CELL); i <= Math.floor((x + reach) / CELL); i++) {
+      for (let j = Math.floor((z - reach) / CELL); j <= Math.floor((z + reach) / CELL); j++) {
         cells.get(`${i},${j}`)?.forEach((c) => found.add(c));
       }
     }
@@ -42,6 +44,7 @@ export function createRegistry(path) {
     items.push(item);
     circles.forEach(([x, z, r]) => {
       const key = `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+      largest = Math.max(largest, r);
       if (!cells.has(key)) cells.set(key, []);
       cells.get(key).push({ x, z, r, item });
     });

@@ -103,8 +103,9 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     // how much bigger than the first circuits this one is
     const span = (k) => Math.max(...path.points.map((p) => p[k])) - Math.min(...path.points.map((p) => p[k]));
     const reach = Math.max(1, Math.max(span('x'), span('z')) / 130);
-    if (app.scene.fog && typeof app.scene.fog === 'object') { app.scene.fog.start = 230 * reach; app.scene.fog.end = 420 * reach; }
-    const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3, pitSide: track?.pitSide });
+    if (app.scene.fog && typeof app.scene.fog === 'object') { app.scene.fog.start = 260 * reach; app.scene.fog.end = 520 * reach; }
+    camera.camera.farClip = 900 * reach; // the far side of a big circuit must still be drawn
+    const circuit = buildCircuit(app, path, { teams, env: track?.env || 'forest', seed: (track?.id || 'x').length * 7 + 3, pitSide: track?.pitSide, landmarks: track?.landmarks });
 
     addReflections(app, circuit, theme.sky, detail);
     sun.light.shadowDistance = 420 * reach;

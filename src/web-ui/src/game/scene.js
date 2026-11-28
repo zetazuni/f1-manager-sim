@@ -5,6 +5,7 @@ import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, materialC
 import { buildEnvironment, ENVIRONMENTS } from './environments';
 import { trackside, sponsorBoards, clearance, reservePit, bridgeWorks } from './details';
 import { createRegistry } from './placement';
+import { buildLandmarks } from './landmarks';
 import { liveryOf, paint, inkOn, letteringMaterial, decal } from './liveries';
 
 export const TRACK_WIDTH = 7;
@@ -123,7 +124,7 @@ function meshEntity(parent, mesh, mat, name) {
   return e;
 }
 
-export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1 } = {}) {
+export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1, landmarks = [] } = {}) {
   useMaterials(app.graphicsDevice);
   const theme = ENVIRONMENTS[env] || ENVIRONMENTS.forest;
   const device = app.graphicsDevice;
@@ -135,7 +136,7 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const glow = new MeshBuilder();
 
   // Grass and run-off
-  box(root, { pos: [0, -0.58, 0], scale: [900, 1, 900], color: theme.ground, shadows: false }); // top at -0.08
+  box(root, { pos: [0, -0.58, 0], scale: [2400, 1, 2400], color: theme.ground, shadows: false }); // top at -0.08
   // Ribbon materials are two-sided so the triangle winding never hides a strip
   meshEntity(root, ribbon(device, path, -half - 3, half + 3, 0.01), material(theme.runoff, { gloss: 0.1, twoSided: true }), 'runoff');
 
@@ -252,6 +253,8 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
   const reg = createRegistry(path);
   reservePit(reg, path, pit, Math.max(teams.length, 10));
   bridgeWorks(mb, path, reg);
+  // landmarks get the ground first: everything else fits round them
+  root.landmarks = buildLandmarks(mb, glow, path, reg, landmarks);
   trackside(mb, path, reg, { teams, pit, grass: env !== 'city' && env !== 'night' });
   sponsorBoards(app, root, path, reg, teams, s);
   // Grandstands, walls, trees, buildings, water, lights: depends on the circuit

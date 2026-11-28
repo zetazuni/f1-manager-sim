@@ -14,7 +14,7 @@ const PUSH_RISK = 0.15; // chance the push lap is deleted (track limits)
 
 /** Turn a calendar entry into the track object the simulation expects. */
 export const raceTrackOf = (t) => ({
-  id: t.id, name: t.name, env: t.env, points: t.points, pitSide: t.pitSide, totalLaps: t.laps, baseLapTime: t.baseLapTime,
+  id: t.id, name: t.name, env: t.env, points: t.points, pitSide: t.pitSide, landmarks: t.landmarks, totalLaps: t.laps, baseLapTime: t.baseLapTime,
   tireWearFactor: t.tireWearFactor, fuelConsumption: t.fuelConsumption, pitLoss: t.pitLoss, rainChance: t.rainChance ?? 0,
   sectors: { sector1: 0.33, sector2: 0.34, sector3: 0.33 },
 });

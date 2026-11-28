@@ -210,6 +210,11 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - Circuits are 1.6 times larger and stretches that ran too close are eased apart (`game/trackSpread.js`); a figure of eight gets a bridge.
 - A footprint register (`game/placement.js`) gives every stand, board, post, truck and tree its own ground; `m28-placement` checks every circuit for overlaps and road intrusions.
 
+## M29 Circuit landmarks (2026-11-28)
+
+- Generic landmark builders (`game/landmarks.js`): wheel, towers, harbour, lake, dome, stadium, skyline, walls, tunnel, hotel over the road, banking, dunes and more.
+- A calendar entry lists its landmarks; the placement check requires each to be placed. Flat tracks cannot show elevation.
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.
