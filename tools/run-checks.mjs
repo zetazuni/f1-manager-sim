@@ -27,6 +27,7 @@ const CHECKS = [
   ['m8-market', '?round=6'],
   ['m9-cameras', '?notitle=1'],
   ['m10-title', ''],
+  ['m20-calendar', '?notitle=1'],
 ];
 
 const results = [];

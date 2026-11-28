@@ -44,7 +44,7 @@ export function createCareer(teams) {
     const id = slug(d.name);
     drivers[id] = { ...d, id, morale: 65, contract: null };
   });
-  return { year: FIRST_YEAR, drivers, lineups, history: [] };
+  return { year: FIRST_YEAR, drivers, lineups, history: [], records: {} };
 }
 
 /** Grid teams with this season's lineups and developed cars. */

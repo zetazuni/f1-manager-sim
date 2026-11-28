@@ -159,6 +159,12 @@ Status key: DONE, IN PROGRESS, NEXT, LATER.
 - A racing-shield Z with rev ticks, speed lines and a chequered fragment (`public/logo.svg`, small version `public/favicon.svg`).
 - Used on the title screen, header, splash and app icon (`npx tauri icon src-tauri/app-icon.png`).
 
+## M20 Race week and calendar (2026-11-28)
+
+- 3D circuit view (`CircuitView`): orbit, flyover, from above, or the flat map.
+- Weekend briefing: our drivers, title race, sponsor objective and records at this circuit.
+- Calendar cards open a track preview with records. Records are kept per circuit in the career; a season pack can add real past results (`TRACK_HISTORY`).
+
 ## Ideas for later
 
 - More circuits and a calendar that changes each year.

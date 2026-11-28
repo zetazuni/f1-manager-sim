@@ -264,8 +264,9 @@ const RaceView = ({ carsRef, weatherRef = null, focusId = null, teams = [], trac
     return () => {
       canvas.removeEventListener('wheel', onWheel);
       ro.disconnect();
+      const device = app.graphicsDevice;
       app.destroy();
-      clearMaterialCache();
+      clearMaterialCache(device);
       clearCarMeshCache();
       if (window.__zetrace?.app === app) delete window.__zetrace;
     };

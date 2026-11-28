@@ -54,6 +54,7 @@ export function loadCareer({ teams, playerTeamId }) {
   if (!season.ledger) season.ledger = [];
   if (!season.news) season.news = [];
   if (!season.career) season.career = createCareer(teams);
+  season.career.records ??= {}; // saves from before track records
   Object.values(season.career.drivers).forEach((d) => { if (d.morale === undefined) d.morale = 68; });
   if (season.phase === 'race') season.phase = season.quali ? 'quali' : 'preview';
   return { ...data, season };

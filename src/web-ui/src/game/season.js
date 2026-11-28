@@ -75,7 +75,7 @@ export function runQualifying({ teams, track, engine, playerTeamId, modes = {}, 
  * Add a finished race (snapshot rows from raceSim) to the season. With `teams`
  * it also settles money and car development for the round (factory.js).
  */
-export function recordRace(season, trackId, rows, fastestCarId, teams = null, swaps = []) {
+export function recordRace(season, trackId, rows, fastestCarId, teams = null, swaps = [], fastestTime = null) {
   const next = structuredClone(season);
   const out = rows.map((r) => {
     let points = r.dnf ? 0 : POINTS[r.pos - 1] || 0;
@@ -89,6 +89,7 @@ export function recordRace(season, trackId, rows, fastestCarId, teams = null, sw
     next.teamPoints[teamId] = (next.teamPoints[teamId] || 0) + r.points;
   });
   next.results.push({ trackId, rows: out });
+  noteRecords(next, trackId, rows, fastestCarId, fastestTime);
   next.phase = 'results';
   if (teams && next.teams) {
     const byId = new Map(out.map((r) => [r.carId, r]));
@@ -96,6 +97,21 @@ export function recordRace(season, trackId, rows, fastestCarId, teams = null, sw
     next.moraleChanges = updateMorale(next, teams, rows, swaps);
   }
   return next;
+}
+
+/** Track records live in the career, so they survive from season to season. */
+function noteRecords(season, trackId, rows, fastestCarId, fastestTime) {
+  if (!season.career) return;
+  season.career.records ??= {};
+  const record = (season.career.records[trackId] ??= { winners: [] });
+  const year = season.career.year;
+  const who = (r) => ({ driver: r.name, team: r.team, year });
+  const winner = rows.find((r) => r.pos === 1 && !r.dnf);
+  if (winner) record.winners.unshift(who(winner));
+  const quickest = rows.find((r) => r.id === fastestCarId);
+  if (quickest && fastestTime && (!record.lap || fastestTime < record.lap.time)) record.lap = { time: fastestTime, ...who(quickest) };
+  const pole = season.quali?.[0];
+  if (pole && !pole.deleted && (!record.pole || pole.time < record.pole.time)) record.pole = { time: pole.time, driver: pole.name, team: pole.team, year };
 }
 
 /** Move on after the results screen. */

@@ -1,0 +1,22 @@
+[
+  { "waitFor": "[data-testid=briefing]" },
+  { "waitFor": "[data-testid=circuit-view] canvas" },
+  { "wait": 800 },
+  { "eval": "'preview ' + JSON.stringify(window.__zetracePreview())" },
+  { "shot": "m20-preview.png" },
+  { "eval": "document.querySelector('[data-view=fly]').click(), 'fly'" },
+  { "wait": 800 },
+  { "shot": "m20-fly.png" },
+  { "eval": "document.querySelector('[data-tab=calendar]').click(), 'calendar'" },
+  { "waitFor": "[data-testid=calendar]" },
+  { "eval": "document.querySelectorAll('[data-track]')[2].click(), 'open round 3'" },
+  { "waitFor": "[data-testid=track-modal] [data-testid=track-records]" },
+  { "wait": 900 },
+  { "eval": "'modal ' + JSON.stringify(window.__zetracePreview()) + ' | records: ' + document.querySelector('[data-testid=track-records]').textContent.slice(0, 90)" },
+  { "shot": "m20-modal.png" },
+  { "eval": "document.querySelector('[data-testid=track-modal] [data-view=map]').click(), 'map'" },
+  { "wait": 300 },
+  { "eval": "document.querySelector('[data-testid=track-close]').click(), 'close'" },
+  { "wait": 300 },
+  { "eval": "if (document.querySelector('[data-testid=track-modal]')) throw new Error('modal did not close'); 'closed'" }
+]

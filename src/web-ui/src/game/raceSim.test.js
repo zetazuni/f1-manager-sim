@@ -203,13 +203,14 @@ export function run() {
     const outOfFuel = race.cars.filter((c) => c.dnf === 'Out of fuel').length;
     ok(outOfFuel === 0, `${cal.id}: ${outOfFuel} cars ran out of fuel on Standard mapping`);
     perTrack.push({ track: cal.id, winner: snap.rows[0].name, dnf: snap.rows.filter((r) => r.dnf).length, playerBest: Math.min(...snap.rows.filter((r) => r.isPlayer).map((r) => r.pos)) });
-    season = advance(recordRace(season, cal.id, snap.rows, race.fastest?.carId, GRID_TEAMS));
+    season = advance(recordRace(season, cal.id, snap.rows, race.fastest?.carId, GRID_TEAMS, [], race.fastest?.time));
   }
   const tables = standings(season, GRID_TEAMS);
   const driverSum = tables.drivers.reduce((a, d) => a + d.points, 0);
   const teamSum = tables.teams.reduce((a, t) => a + t.points, 0);
   ok(driverSum === teamSum, `driver points ${driverSum} != team points ${teamSum}`);
   ok(season.results.length === CALENDAR.length, 'not every round was recorded');
+  ok(CALENDAR.every((c) => season.career.records[c.id]?.lap?.time > 0), 'a circuit has no lap record');
   ok(tables.drivers.every((d, i) => i === 0 || d.points <= tables.drivers[i - 1].points), 'driver table not sorted');
   // finances and development
   const budgets = Object.values(season.teams).map((t) => t.budget);
@@ -246,6 +247,7 @@ export function run() {
   ok(new Set(seats).size === seats.length, 'a driver sits in two seats');
   ok(season2.career.lineups[PLAYER_TEAM_ID][1] === target.id, 'signed driver is not in the chosen seat');
   ok(season2.career.year === season.career.year + 1, 'year did not advance');
+  ok(season2.career.records?.[CALENDAR[0].id]?.winners.length === 1, 'track records did not survive into season 2');
   ok(season2.results.length === 0 && Object.values(season2.driverPoints).every((p) => p === 0), 'points not reset');
   ok(spread(season2) < spreadBefore, `regulation reset did not close the field (${spreadBefore.toFixed(2)} -> ${spread(season2).toFixed(2)})`);
   // race one round of season 2 with the new lineups

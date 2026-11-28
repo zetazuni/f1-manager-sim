@@ -128,7 +128,7 @@ const RaceScreen = ({ teams: teamsAtStart, playerTeamId, track, gridOrder, pract
 
   const finish = useCallback(() => {
     const race = raceRef.current;
-    onFinished(snapshot(race), race.fastest?.carId || null);
+    onFinished(snapshot(race), race.fastest?.carId || null, race.fastest?.time || null);
   }, [onFinished]);
 
   const playerTeam = teams.find((t) => t.id === playerTeamId);

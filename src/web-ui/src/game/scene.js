@@ -1,7 +1,7 @@
 import * as pc from 'playcanvas';
 import { pitLayout } from './trackPath';
 import { GRID_SLOT_UNITS } from './raceSim';
-import { MeshBuilder, vertexColorMaterial, glowMaterial, clearVertexColorMaterials, meshToEntity } from './meshBuilder';
+import { MeshBuilder, vertexColorMaterial, glowMaterial, meshToEntity, materialCache, useMaterials, dropMaterials } from './meshBuilder';
 import { buildEnvironment, ENVIRONMENTS } from './environments';
 import { trackside, sponsorBoards } from './details';
 
@@ -13,10 +13,10 @@ const hex = (h) => {
   return c;
 };
 
-const matCache = new Map();
 /** Shared, cached material per colour (one material per colour, not per box). */
 export function material(color, { emissive = null, gloss = 0.35, metalness = 0, twoSided = false } = {}) {
   const key = `${color}|${emissive}|${gloss}|${metalness}|${twoSided}`;
+  const matCache = materialCache();
   if (matCache.has(key)) return matCache.get(key);
   const m = new pc.StandardMaterial();
   m.diffuse = hex(color);
@@ -31,9 +31,8 @@ export function material(color, { emissive = null, gloss = 0.35, metalness = 0, 
 }
 // Called after app.destroy(): the device has already released GPU resources,
 // so only drop the references (destroying here would touch a dead device).
-export const clearMaterialCache = () => {
-  matCache.clear();
-  clearVertexColorMaterials();
+export const clearMaterialCache = (device) => {
+  dropMaterials(device);
 };
 
 export function box(parent, { pos, scale, color, rot = [0, 0, 0], shadows = true, mat = null }) {
@@ -123,6 +122,7 @@ function meshEntity(parent, mesh, mat, name) {
 }
 
 export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1 } = {}) {
+  useMaterials(app.graphicsDevice);
   const theme = ENVIRONMENTS[env] || ENVIRONMENTS.forest;
   const device = app.graphicsDevice;
   const root = new pc.Entity('circuit');
@@ -257,6 +257,7 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, 
  */
 const carMeshCache = new Map();
 export function buildCar(app, color, accent = '#111827') {
+  useMaterials(app.graphicsDevice);
   const key = `${color}|${accent}`;
   let mesh = carMeshCache.get(key);
   if (!mesh || mesh.device !== app.graphicsDevice) {
@@ -344,6 +345,7 @@ export const clearCarMeshCache = () => carMeshCache.clear();
  * safety car comes out.
  */
 export function buildSafetyCar(app) {
+  useMaterials(app.graphicsDevice);
   let safetyCarMesh = null;
   {
     const mb = new MeshBuilder();
@@ -365,6 +367,7 @@ export function buildSafetyCar(app) {
 
 /** Rain: thin streaks in one mesh, moved down and wrapped every frame. */
 export function buildRain(app) {
+  useMaterials(app.graphicsDevice);
   const mb = new MeshBuilder();
   let a = 99;
   const rnd = () => {

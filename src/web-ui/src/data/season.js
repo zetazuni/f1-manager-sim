@@ -19,4 +19,5 @@ export const GRID_PROFILES = pick('GRID_PROFILES', agents.GRID_PROFILES);
 export const FIRST_YEAR = pick('FIRST_YEAR', 2026);
 export const FASTEST_LAP_BONUS = pick('FASTEST_LAP_BONUS', true);
 export const FACES = pick('FACES', {}); // driver code -> image URL
+export const TRACK_HISTORY = pick('TRACK_HISTORY', {}); // circuit id -> [{ year, winner, pole, fastest, team }]
 export const DISCLAIMER = pick('DISCLAIMER', 'Fictional teams, drivers and circuits.');

@@ -180,11 +180,24 @@ export class MeshBuilder {
   }
 }
 
-let vcMaterial = null;
-let vcGlossy = null;
+// Materials are cached per graphics device: two 3D views never share one.
+const caches = new WeakMap();
+let scope = null;
+/** Builders call this first with the device they are building for. */
+export const useMaterials = (device) => {
+  scope = device;
+};
+export function materialCache() {
+  if (!caches.has(scope)) caches.set(scope, new Map());
+  return caches.get(scope);
+}
+export const dropMaterials = (device) => caches.delete(device ?? scope);
+
 /** Shared vertex-colour materials (matte for scenery, glossy for cars). */
 export function vertexColorMaterial(glossy = false) {
-  if (glossy ? vcGlossy : vcMaterial) return glossy ? vcGlossy : vcMaterial;
+  const key = glossy ? '#vc-glossy' : '#vc-matte';
+  const cache = materialCache();
+  if (cache.has(key)) return cache.get(key);
   const m = new pc.StandardMaterial();
   m.diffuse = new pc.Color(1, 1, 1);
   m.diffuseVertexColor = true;
@@ -192,13 +205,13 @@ export function vertexColorMaterial(glossy = false) {
   m.metalness = glossy ? 0.25 : 0;
   m.gloss = glossy ? 0.72 : 0.25;
   m.update();
-  if (glossy) vcGlossy = m; else vcMaterial = m;
+  cache.set(key, m);
   return m;
 }
-let vcGlow = null;
 /** Self-lit vertex-colour material (lamps, lit windows, neon). */
 export function glowMaterial() {
-  if (vcGlow) return vcGlow;
+  const cache = materialCache();
+  if (cache.has('#glow')) return cache.get('#glow');
   const m = new pc.StandardMaterial();
   m.diffuse = new pc.Color(0, 0, 0);
   m.emissive = new pc.Color(1, 1, 1);
@@ -206,14 +219,10 @@ export function glowMaterial() {
   m.emissiveIntensity = 1.6;
   m.useLighting = false;
   m.update();
-  vcGlow = m;
+  cache.set('#glow', m);
   return m;
 }
-export function clearVertexColorMaterials() {
-  vcMaterial = null;
-  vcGlossy = null;
-  vcGlow = null;
-}
+
 
 /** Wrap a mesh in an entity with one render component. */
 export function meshToEntity(mesh, mat, { name = 'mesh', castShadows = true, receiveShadows = true } = {}) {

@@ -16,6 +16,7 @@ import { saveCareer, loadCareer, clearCareer, loadSettings, saveSettings } from 
 import { setSoundEnabled } from './services/AudioManager';
 import { setMusicLevel } from './services/MusicPlayer';
 import Logo from './components/Logo';
+import Briefing from './components/Briefing';
 
 const TABS = [
   { id: 'weekend', label: 'Race weekend' },
@@ -112,8 +113,8 @@ function App() {
     setSeason((s) => ({ ...s, phase: 'quali', quali }));
   };
   const toRace = () => setSeason((s) => ({ ...s, phase: 'race' }));
-  const onFinished = useCallback((snap, fastestCarId) => {
-    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s), snap.swapLog || []));
+  const onFinished = useCallback((snap, fastestCarId, fastestTime) => {
+    setSeason((s) => recordRace(s, CALENDAR[s.round].id, snap.rows, fastestCarId, teamsForSeason(GRID_TEAMS, s), snap.swapLog || [], fastestTime));
     setTab('weekend');
   }, []);
   const next = () => setSeason((s) => advance(s));
@@ -232,7 +233,7 @@ function App() {
           <FactoryView season={season} teams={seasonTeams} playerTeamId={PLAYER_TEAM_ID} onStart={startUpgrade} />
         )}
         {tab === 'calendar' && (
-          <CalendarView calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
+          <CalendarView teams={seasonTeams} career={season.career} quality={settings.quality} calendar={CALENDAR} round={season.round} results={season.results} nameOf={nameOf} seasonDone={done} />
         )}
         {tab === 'weekend' && (
           <>
@@ -245,6 +246,9 @@ function App() {
                 track={calTrack}
                 round={season.round + 1}
                 total={CALENDAR.length}
+                teams={seasonTeams}
+                quality={settings.quality}
+                briefing={<Briefing season={season} track={calTrack} table={table} />}
                 players={playerCars}
                 modes={modes}
                 onMode={(carId, m) => setModes((x) => ({ ...x, [carId]: m }))}

@@ -1,5 +1,6 @@
 import React from 'react';
 import TrackMap from './TrackMap';
+import CircuitView from './CircuitView';
 import { ENVIRONMENTS } from '../game/environments';
 import { QUALI_MODE } from '../game/season';
 import { formatLap, PRACTICE } from '../game/raceSim';
@@ -24,14 +25,14 @@ const Stat = ({ label, children }) => (
 );
 
 /** Track card used on the preview screen. */
-export const TrackCard = ({ track, round, total }) => {
+export const TrackCard = ({ track, round, total, teams, quality }) => {
   const env = ENVIRONMENTS[track.env];
   return (
     <div className="panel overflow-hidden">
-      <div className="grid gap-0 md:grid-cols-[1.1fr_1fr]">
-        <div className="relative flex items-center justify-center p-6" style={{ background: `radial-gradient(circle at 50% 40%, ${env.ground}55, transparent 70%)` }}>
-          <TrackMap pitSide={track.pitSide} points={track.points} className="h-64 w-full max-w-md drop-shadow-[0_0_18px_rgba(225,6,0,0.35)]" width={4.5} />
-          <span className="absolute left-4 top-4 rounded bg-ink/80 px-2 py-1 font-display text-xs font-bold text-data">{env.label}</span>
+      <div className="grid gap-0 md:grid-cols-[1.45fr_1fr]">
+        <div className="relative min-w-0">
+          <CircuitView track={track} teams={teams} quality={quality} className="h-72 md:h-full md:min-h-[430px]" />
+          <span className="absolute left-3 top-3 rounded bg-ink/80 px-2 py-1 font-display text-xs font-bold text-data">{env.label}</span>
         </div>
         <div className="space-y-4 p-6">
           <div>
@@ -54,9 +55,12 @@ export const TrackCard = ({ track, round, total }) => {
   );
 };
 
-export const PreviewPanel = ({ track, round, total, players, modes, onMode, practice = {}, onPractice = () => {}, onQualify }) => (
+export const PreviewPanel = ({ track, round, total, teams, quality, briefing = null, players, modes, onMode, practice = {}, onPractice = () => {}, onQualify }) => (
   <div className="screen-enter grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-    <TrackCard track={track} round={round} total={total} />
+    <div className="min-w-0 space-y-5">
+      <TrackCard track={track} round={round} total={total} teams={teams} quality={quality} />
+      {briefing}
+    </div>
     <div className="panel space-y-4 p-5">
       <h3 className="panel-title">Practice and qualifying</h3>
       <p className="text-sm text-muted">
