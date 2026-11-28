@@ -26,7 +26,7 @@ const CalendarView = ({ calendar, round, results, nameOf, seasonDone }) => (
               {status === 'done' ? 'Done' : status === 'next' ? 'Next' : 'Upcoming'}
             </span>
           </div>
-          <TrackMap points={t.points} className="my-3 h-36 w-full" width={4} stroke={status === 'done' ? '#94a3b8' : '#e2e8f0'} />
+          <TrackMap pitSide={t.pitSide} points={t.points} className="my-3 h-36 w-full" width={4} stroke={status === 'done' ? '#94a3b8' : '#e2e8f0'} />
           <p className="text-sm">
             {winner ? <>Winner: <b style={{ color: winner.color }}>{winner.name}</b></> : <span className="text-muted">Not raced yet</span>}
           </p>

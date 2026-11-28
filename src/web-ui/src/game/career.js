@@ -4,11 +4,11 @@
 // Seats stay as car ids (`team-0`, `team-1`) inside a season; the lineup
 // decides which driver sits in each seat and only changes between seasons.
 
-import { FREE_AGENTS, GRID_PROFILES } from '../data/freeAgents';
+import { FREE_AGENTS, GRID_PROFILES, FIRST_YEAR } from '../data/season';
 import { makeRng } from './raceSim';
 import { teamsWithCars, carRating } from './factory';
 
-export const FIRST_YEAR = 2027;
+export { FIRST_YEAR };
 export const VACANT = {
   id: null, name: 'Vacant seat', code: '---', age: 0, potential: 0, pace: 70, consistency: 70, experience: 0,
   adaptability: 70, overtaking: 70, defending: 70, tireManagement: 70, starts: 70, salary: 0, vacant: true,

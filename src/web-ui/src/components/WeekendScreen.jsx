@@ -29,7 +29,7 @@ export const TrackCard = ({ track, round, total }) => {
     <div className="panel overflow-hidden">
       <div className="grid gap-0 md:grid-cols-[1.1fr_1fr]">
         <div className="relative flex items-center justify-center p-6" style={{ background: `radial-gradient(circle at 50% 40%, ${env.ground}55, transparent 70%)` }}>
-          <TrackMap points={track.points} className="h-64 w-full max-w-md drop-shadow-[0_0_18px_rgba(225,6,0,0.35)]" width={4.5} />
+          <TrackMap pitSide={track.pitSide} points={track.points} className="h-64 w-full max-w-md drop-shadow-[0_0_18px_rgba(225,6,0,0.35)]" width={4.5} />
           <span className="absolute left-4 top-4 rounded bg-ink/80 px-2 py-1 font-display text-xs font-bold text-data">{env.label}</span>
         </div>
         <div className="space-y-4 p-6">
@@ -129,7 +129,7 @@ export const QualiPanel = ({ quali, track, onRace }) => {
       </div>
       <div className="panel flex flex-col gap-4 p-5">
         <h3 className="panel-title">Grid set</h3>
-        <TrackMap points={track.points} className="h-48 w-full" width={4} />
+        <TrackMap pitSide={track.pitSide} points={track.points} className="h-48 w-full" width={4} />
         {quali.filter((q) => q.isPlayer).map((q) => (
           <p key={q.carId} className="text-sm">
             <b className="font-display text-lg">{q.name}</b> starts <b className="text-data">P{q.pos}</b>

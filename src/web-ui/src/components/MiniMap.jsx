@@ -18,14 +18,14 @@ const MiniMap = ({ carsRef, points, focusId }) => {
   const geo = useMemo(() => {
     const path = makeTrackPath(points, 200);
     const xs = path.points.map((p) => p.x);
-    const ys = path.points.map((p) => -p.z);
+    const ys = path.points.map((p) => p.z);
     const pad = 8;
     const minX = Math.min(...xs) - pad;
     const minY = Math.min(...ys) - pad;
     return {
       path,
       viewBox: `${minX} ${minY} ${Math.max(...xs) + pad - minX} ${Math.max(...ys) + pad - minY}`,
-      d: `${path.points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${(-p.z).toFixed(1)}`).join(' ')} Z`,
+      d: `${path.points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.z.toFixed(1)}`).join(' ')} Z`,
     };
   }, [points]);
 
@@ -53,7 +53,7 @@ const MiniMap = ({ carsRef, points, focusId }) => {
         g.appendChild(dot); // re-append keeps draw order
         const p = geo.path.pointAt(c.lapFloat);
         dot.setAttribute('cx', p.x.toFixed(1));
-        dot.setAttribute('cy', (-p.z).toFixed(1));
+        dot.setAttribute('cy', p.z.toFixed(1));
         dot.setAttribute('stroke', c.id === focusRef.current ? '#ffffff' : c.isPlayer ? '#22d3ee' : '#05080f');
       });
       dots.forEach((dot, id) => {

@@ -121,7 +121,7 @@ function meshEntity(parent, mesh, mat, name) {
   return e;
 }
 
-export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 } = {}) {
+export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3, pitSide = -1 } = {}) {
   const theme = ENVIRONMENTS[env] || ENVIRONMENTS.forest;
   const device = app.graphicsDevice;
   const root = new pc.Entity('circuit');
@@ -171,7 +171,7 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
   }
   // Painted grid slots behind the line: GRID_SLOT_UNITS apart, staggered
   // left/right exactly where carPose puts the cars before the start
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < Math.max(20, teams.length * 2); i++) {
     const p = path.pointAt(-(i * GRID_SLOT_UNITS) / path.total, i % 2 ? 1.7 : -1.7);
     const g = { mb, group: { pos: [p.x, 0.065, p.z], rot: [0, p.heading, 0] } };
     box(g, { pos: [0, 0, 2.7], scale: [2.2, 0.02, 0.18], color: '#f8fafc' });
@@ -185,7 +185,8 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
   box(finish, { pos: [0, 5, 0], scale: [TRACK_WIDTH + 3.5, 0.8, 0.6], color: '#e10600' });
 
   // Pit lane alongside the main straight, with entry and exit ramps
-  const pit = pitLayout(path.total);
+  const pit = pitLayout(path.total, pitSide);
+  const s = pit.side;
   const PIT_LANE = pit;
   const pitBoxFrac = pit.boxFrac;
   const { ramp } = pit;
@@ -198,13 +199,13 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
   };
   meshEntity(root, laneRibbon(device, path, PIT_LANE.start - ramp, PIT_LANE.end + ramp, centreAt, 3.6, 0.025),
     material('#30343c', { gloss: 0.2, twoSided: true }), 'pitlane');
-  meshEntity(root, laneRibbon(device, path, PIT_LANE.start, PIT_LANE.end, () => lat - 1.9, 0.18, 0.05),
+  meshEntity(root, laneRibbon(device, path, PIT_LANE.start, PIT_LANE.end, () => lat + s * 1.9, 0.18, 0.05),
     material('#facc15', { twoSided: true }), 'pit-line');
   // Pit wall between the track and the pit lane
   const wallSteps = 24;
   for (let i = 0; i < wallSteps; i++) {
     const f = PIT_LANE.start + ((PIT_LANE.end - PIT_LANE.start) * (i + 0.5)) / wallSteps;
-    const p = path.pointAt(f, -(TRACK_WIDTH / 2 + 2.6));
+    const p = path.pointAt(f, s * (TRACK_WIDTH / 2 + 2.6));
     const seg = ((PIT_LANE.end - PIT_LANE.start) * path.total) / wallSteps;
     box(mb, { pos: [p.x, 0.5, p.z], scale: [0.35, 1, seg * 1.02], rot: [0, p.heading, 0], color: i % 2 ? '#e5e7eb' : '#cbd5e1' });
   }
@@ -215,8 +216,9 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
   for (let i = 0; i < slots; i++) {
     const team = teams[i];
     const f = pitBoxFrac(i);
-    const p = path.pointAt(f, lat - 5.2);
-    const g = { mb, group: { pos: [p.x, 0, p.z], rot: [0, p.heading, 0] } };
+    const p = path.pointAt(f, lat + s * 5.2);
+    // turned half way round on the other side so the door still faces the track
+    const g = { mb, group: { pos: [p.x, 0, p.z], rot: [0, p.heading + (s > 0 ? 180 : 0), 0] } };
     // local axes after the yaw: +Z along the track, -X points towards the track
     // on the pit (negative lateral) side, so the door and apron sit at -X
     box(g, { pos: [0, 2, 0], scale: [6, 4, garageLen * 0.96], color: '#d7dbe2' });
@@ -225,13 +227,13 @@ export function buildCircuit(app, path, { teams = [], env = 'forest', seed = 3 }
     box(g, { pos: [-3.9, 0.04, 0], scale: [1.6, 0.04, garageLen * 0.7], color: team ? team.accent : '#64748b' });
   }
   // One long roof over the garage row
-  const r0 = path.pointAt(pitBoxFrac(0) - garageLen / 2 / path.total, lat - 5.6);
-  const r1 = path.pointAt(pitBoxFrac(slots - 1) + garageLen / 2 / path.total, lat - 5.6);
+  const r0 = path.pointAt(pitBoxFrac(0) - garageLen / 2 / path.total, lat + s * 5.6);
+  const r1 = path.pointAt(pitBoxFrac(slots - 1) + garageLen / 2 / path.total, lat + s * 5.6);
   const roofLen = Math.hypot(r1.x - r0.x, r1.z - r0.z);
   const roofHead = (Math.atan2(r1.x - r0.x, r1.z - r0.z) * 180) / Math.PI;
   box(mb, { pos: [(r0.x + r1.x) / 2, 4.25, (r0.z + r1.z) / 2], scale: [7.4, 0.5, roofLen], rot: [0, roofHead, 0], color: '#e10600' });
   // Grandstands, walls, trees, buildings, water, lights: depends on the circuit
-  buildEnvironment(mb, glow, path, env, seed);
+  buildEnvironment(mb, glow, path, env, seed, s);
 
   const staticMesh = mb.build(device);
   if (staticMesh) root.addChild(meshToEntity(staticMesh, vertexColorMaterial(false), { name: 'static-scenery' }));

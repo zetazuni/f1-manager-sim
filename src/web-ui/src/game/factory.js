@@ -108,7 +108,7 @@ export function settleRound(season, rows, teams) {
     if (ts.isPlayer) {
       const r = season.round + 1;
       season.ledger.push({ round: r, label: `Prize money (${points} pts)`, amount: +prize.toFixed(2) });
-      season.ledger.push({ round: r, label: 'Title sponsor', amount: sponsor });
+      season.ledger.push({ round: r, label: team.sponsor ? `Title sponsor: ${team.sponsor}` : 'Title sponsor', amount: sponsor });
       const goal = sponsorGoalFor(season.round);
       if (goalMet(goal, mine)) {
         delta += goal.reward;
